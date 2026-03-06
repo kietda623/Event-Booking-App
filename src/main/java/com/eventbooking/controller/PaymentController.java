@@ -3,25 +3,21 @@ package com.eventbooking.controller;
 import com.eventbooking.dto.booking.BookingRequest;
 import com.eventbooking.dto.booking.BookingResponse;
 import com.eventbooking.service.BookingService;
+import com.eventbooking.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/bookings")
+@RequestMapping("/api/payments")
 @RequiredArgsConstructor
-public class BookingController {
+public class PaymentController {
 
-    private final BookingService bookingService;
+    private final PaymentService paymentService;
 
     @PostMapping
-    public BookingResponse book(@RequestBody BookingRequest request){
-        return bookingService.book(request);
-    }
-
-    @GetMapping("/my")
-    public List<BookingResponse> myBookings(){
-        return bookingService.myBookings();
+    public void pay(@RequestParam Long bookingId){
+        paymentService.pay(bookingId);
     }
 }
