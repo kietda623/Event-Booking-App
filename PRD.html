@@ -282,11 +282,11 @@ footer strong{color:rgba(255,255,255,.95);}
           <tr><td><code>users</code></td><td>id, username, fullName, email, password, avatar</td><td>1-N bookings, N-N roles, 1-1 reminders</td><td>MVP dùng `username` để login; password hash bằng BCrypt.</td></tr>
           <tr><td><code>roles</code> / <code>user_roles</code></td><td>role id/name, user-role join</td><td>N-N users</td><td>`USER` tự tạo khi register; `ADMIN` cần seed/management riêng.</td></tr>
           <tr><td><code>events</code></td><td>id, title, description, location, eventDate, totalTickets, ticketPrice</td><td>1-N bookings</td><td>MVP đã có search title/location; chưa có latitude/longitude/imageUrl.</td></tr>
-          <tr><td><code>bookings</code></td><td>id, bookingDate, quantity, totalPrice, status, user, event</td><td>N-1 users, N-1 events, 1-N tickets, 1-N payments</td><td>Booking tạo `PENDING`, sau payment chuyển `PAID`.</td></tr>
+          <tr><td><code>bookings</code></td><td>id, bookingDate, quantity, totalPrice, status, user, event</td><td>N-1 users, N-1 events, 1-N tickets, 1-1 payment</td><td>Booking tạo `PENDING`, cancel được khi còn pending, sau payment chuyển `PAID`.</td></tr>
           <tr><td><code>favorites</code></td><td>id, user_id, event_id</td><td>N-1 users, N-1 events</td><td>Unique theo user/event để toggle wishlist an toàn.</td></tr>
-          <tr><td><code>payments</code></td><td>id, amount, method, status, paymentDate, booking</td><td>N-1 bookings</td><td>Payment mock nội bộ, chưa kết nối gateway thật.</td></tr>
+          <tr><td><code>payments</code></td><td>id, amount, method, status, paymentDate, booking</td><td>1-1 bookings</td><td>Payment mock nội bộ, reject booking `PAID`/`CANCELLED`, chưa kết nối gateway thật.</td></tr>
           <tr><td><code>reminders</code></td><td>id, eventReminder, user</td><td>1-1 users</td><td>Cài đặt nhắc nhở theo user hiện tại.</td></tr>
-          <tr><td><code>tickets</code></td><td>id, ticket_code, booking_id</td><td>N-1 bookings</td><td>Sinh sau booking/payment thành công.</td></tr>
+          <tr><td><code>tickets</code></td><td>id, ticket_code, booking_id</td><td>N-1 bookings</td><td>Entity hỗ trợ nhiều ticket/booking; MVP hiện sinh 1 ticket code sau payment thành công.</td></tr>
         </tbody>
       </table>
     </div>
@@ -419,7 +419,7 @@ classDiagram
   User "*" --> "*" Role : roles_user_roles
   User "1" --> "*" Booking
   Event "1" --> "*" Booking
-  Booking "1" --> "*" Payment
+  Booking "1" --> "1" Payment
   Booking "1" --> "*" Ticket
   User "1" --> "1" Reminder
   User "1" --> "*" Favorite
@@ -495,11 +495,11 @@ sequenceDiagram
   participant EventService
   participant EventRepository
   participant BookingRepository
-  Client->>EventController: GET /api/events?search=keyword
-  EventController->>EventService: getEvents(search)
-  EventService->>EventRepository: findAll or search title/location
+  Client->>EventController: GET /api/events?search=&upcoming=&page=&size=&sortBy=&sortDir=
+  EventController->>EventService: getAll(search, upcoming, page, size, sortBy, sortDir)
+  EventService->>EventRepository: searchEvents(search, upcoming, now, pageable)
   EventService->>BookingRepository: sumBookedQuantityByEventId(eventId)
-  EventService-->>EventController: List EventResponse
+  EventService-->>EventController: PageResponse<EventResponse>
   EventController-->>Client: 200 OK
   Client->>EventController: GET /api/events/{id}
   EventController->>EventService: getEventById(id)
@@ -521,12 +521,16 @@ sequenceDiagram
   JwtFilter->>EventController: Authorized admin request
   Admin->>EventController: POST or PUT /api/events
   EventController->>EventService: createEvent/updateEvent(EventRequest)
+  opt Update existing event
+    EventService->>EventRepository: findById(id)
+  end
   EventService->>EventRepository: save(Event)
   EventRepository-->>EventService: persisted Event
   EventService-->>EventController: EventResponse
-  EventController-->>Admin: 200 OK
+  EventController-->>Admin: 201 Created or 200 OK
   Admin->>EventController: DELETE /api/events/{id}
   EventController->>EventService: deleteEvent(id)
+  EventService->>EventRepository: findById(id)
   EventService->>EventRepository: deleteById(id)
   EventController-->>Admin: 204 No Content
     </pre>
@@ -586,11 +590,17 @@ sequenceDiagram
   PaymentService->>SecurityContext: current username
   PaymentService->>BookingRepository: findByIdAndUserUsername(bookingId, username)
   PaymentService->>PaymentRepository: existsByBookingIdAndStatus(bookingId, "PAID")
-  PaymentService->>PaymentRepository: save(Payment PAID)
-  PaymentService->>BookingRepository: save(Booking PAID)
-  PaymentService->>TicketRepository: save(Ticket code)
-  PaymentService-->>PaymentController: PaymentResponse
-  PaymentController-->>User: 200 OK
+  alt Booking is PAID
+    PaymentService-->>PaymentController: BusinessException("Booking is already paid")
+  else Booking is CANCELLED
+    PaymentService-->>PaymentController: BusinessException("Cancelled bookings cannot be paid")
+  else Booking is PENDING
+    PaymentService->>BookingRepository: save(Booking PAID)
+    PaymentService->>PaymentRepository: save(Payment PAID)
+    PaymentService->>TicketRepository: save(Ticket code)
+    PaymentService-->>PaymentController: PaymentResponse
+  end
+  PaymentController-->>User: 200 OK or 400/404
     </pre>
 
     <h3>Sequence - My Tickets</h3>
@@ -605,6 +615,20 @@ sequenceDiagram
   TicketController->>TicketRepository: findByBookingUserUsernameOrderByIdDesc(username)
   TicketRepository-->>TicketController: Tickets
   TicketController-->>User: List TicketResponse
+    </pre>
+
+    <h3>Sequence - Get Profile</h3>
+    <pre class="mermaid">
+sequenceDiagram
+  actor User
+  participant UserController
+  participant SecurityContext
+  participant UserRepository
+  User->>UserController: GET /api/users/profile
+  UserController->>SecurityContext: current username
+  UserController->>UserRepository: findByUsername(username)
+  UserRepository-->>UserController: User
+  UserController-->>User: UserResponse
     </pre>
 
     <h3>Sequence - Update Profile</h3>
@@ -674,6 +698,7 @@ sequenceDiagram
   participant FavoriteService
   participant SecurityContext
   participant EventRepository
+  participant UserRepository
   participant FavoriteRepository
   User->>FavoriteController: POST /api/favorites/{eventId}
   FavoriteController->>FavoriteService: toggle(eventId)
@@ -684,6 +709,7 @@ sequenceDiagram
     FavoriteService->>FavoriteRepository: delete(favorite)
     FavoriteService-->>FavoriteController: favorited=false
   else Favorite missing
+    FavoriteService->>UserRepository: findByUsername(username)
     FavoriteService->>FavoriteRepository: save(Favorite)
     FavoriteService-->>FavoriteController: favorited=true
   end

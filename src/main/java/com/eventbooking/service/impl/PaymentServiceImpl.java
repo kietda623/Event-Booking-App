@@ -14,6 +14,7 @@ import com.eventbooking.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -26,11 +27,15 @@ public class PaymentServiceImpl implements PaymentService {
     private final TicketRepository ticketRepository;
 
     @Override
+    @Transactional
     public PaymentResponse pay(PaymentRequest request) {
         Booking booking = bookingRepository.findByIdAndUserUsername(request.getBookingId(), currentUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
         if ("PAID".equals(booking.getStatus()) || paymentRepository.existsByBookingIdAndStatus(booking.getId(), "PAID")) {
             throw new BusinessException("Booking is already paid");
+        }
+        if ("CANCELLED".equals(booking.getStatus())) {
+            throw new BusinessException("Cancelled bookings cannot be paid");
         }
 
         Payment payment = new Payment();

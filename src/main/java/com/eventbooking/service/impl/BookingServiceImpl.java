@@ -14,6 +14,7 @@ import com.eventbooking.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,6 +27,7 @@ public class BookingServiceImpl implements BookingService {
     private final UserRepository userRepository;
 
     @Override
+    @Transactional
     public BookingResponse book(BookingRequest request) {
         int quantity = request.getQuantity() != null ? request.getQuantity() : 1;
         if (quantity < 1) {
@@ -59,6 +61,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional
     public BookingResponse cancel(Long id) {
         Booking booking = bookingRepository.findByIdAndUserUsername(id, currentUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
