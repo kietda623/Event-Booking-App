@@ -1,4 +1,10 @@
 package com.eventbooking.service;
 
-public class EventService {
+import com.eventbooking.dto.event.EventResponse;
+
+import java.util.List;
+
+public interface EventService {
+    List<EventResponse> getAll();
+    EventResponse getById(Long id);
 }

@@ -1,4 +1,11 @@
 package com.eventbooking.service;
 
-public class BookingService {
+import com.eventbooking.dto.booking.BookingRequest;
+import com.eventbooking.dto.booking.BookingResponse;
+
+import java.util.List;
+
+public interface BookingService {
+    BookingResponse book(BookingRequest request);
+    List<BookingResponse> myBookings();
 }

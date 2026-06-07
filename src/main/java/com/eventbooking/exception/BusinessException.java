@@ -1,4 +1,12 @@
 package com.eventbooking.exception;
 
-public class BusinessException {
+public class BusinessException extends RuntimeException {
+
+    public BusinessException() {
+        super();
+    }
+
+    public BusinessException(String message) {
+        super(message);
+    }
 }

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event Booking App PRD v1.0</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+:root{--primary:#0f766e;--primary-light:#99f6e4;--primary-dark:#134e4a;--accent:#f97316;--bg:#f8fafc;--surface:#fff;--text:#172033;--text-secondary:#5b6475;--border:#dbe3ef;--code-bg:#111827;--code-text:#e5e7eb;--success:#15803d;--warning:#b45309;--danger:#b91c1c;--info:#2563eb;--gold:#a16207;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;scroll-behavior:smooth;}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:var(--primary-dark);color:#fff;padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 10px rgba(15,23,42,.18);}
+nav .logo{font-weight:800;font-size:1.05rem;white-space:nowrap;}
+nav .nav-links{display:flex;gap:.35rem;list-style:none;flex-wrap:wrap;justify-content:flex-end;}
+nav .nav-links a{color:rgba(255,255,255,.86);text-decoration:none;font-size:.78rem;padding:.3rem .55rem;border-radius:4px;transition:background .2s,color .2s;}
+nav .nav-links a:hover{background:rgba(255,255,255,.14);color:#fff;}
+.hero{margin-top:56px;background:linear-gradient(135deg,#0f172a,var(--primary-dark),var(--primary));color:#fff;padding:4rem 2rem 3rem;text-align:center;}
+.hero h1{font-size:2.45rem;font-weight:850;margin-bottom:.55rem;letter-spacing:-.5px;}
+.hero .subtitle{font-size:1.04rem;opacity:.92;max-width:820px;margin:0 auto 1.5rem;}
+.hero .badges{display:flex;justify-content:center;gap:.6rem;flex-wrap:wrap;}
+.hero .badge{background:rgba(255,255,255,.18);padding:.33rem .85rem;border-radius:20px;font-size:.8rem;border:1px solid rgba(255,255,255,.22);}
+.hero .badge.hot{background:rgba(249,115,22,.28);border-color:rgba(251,146,60,.5);}
+.section-wrap{max-width:1120px;margin:0 auto;padding:3rem 2rem;}
+.alt-bg{background:var(--surface);}
+.section-header{display:flex;align-items:center;gap:.8rem;margin-bottom:1.5rem;}
+.section-header .icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;font-weight:800;background:var(--primary);color:#fff;flex-shrink:0;}
+.section-header h2{font-size:1.6rem;font-weight:750;color:var(--text);}
+.section-header .section-num{font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--primary);font-weight:700;}
+h3{font-size:1.1rem;color:var(--primary-dark);margin:1.5rem 0 .8rem;}
+h4{font-size:.95rem;color:var(--accent);margin:1rem 0 .4rem;}
+p{font-size:.91rem;color:var(--text-secondary);margin-bottom:.8rem;}
+ul{padding-left:1.2rem;}
+li{font-size:.88rem;color:var(--text-secondary);margin-bottom:.25rem;}
+code{background:#e2e8f0;padding:.15rem .4rem;border-radius:3px;font-family:'Cascadia Code','Fira Code',Consolas,monospace;font-size:.86em;color:#0f172a;}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin:1.5rem 0;}
+.stat-card{text-align:center;padding:1.2rem .8rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;}
+.stat-card .value{font-size:1.8rem;font-weight:850;color:var(--primary);}
+.stat-card .label{font-size:.78rem;color:var(--text-secondary);margin-top:.2rem;}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.15rem;margin:1.5rem 0;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.4rem;transition:box-shadow .2s,transform .2s;}
+.card:hover{box-shadow:0 4px 20px rgba(15,23,42,.08);transform:translateY(-2px);}
+.card h3{font-size:1rem;margin:0 0 .45rem;color:var(--primary-dark);}
+.card p,.card li{font-size:.86rem;color:var(--text-secondary);}
+.card ul{padding-left:1.1rem;margin-top:.45rem;}
+.card .card-icon{width:34px;height:34px;border-radius:10px;background:#ccfbf1;color:var(--primary-dark);display:flex;align-items:center;justify-content:center;font-weight:800;margin-bottom:.7rem;}
+.table-wrap{overflow-x:auto;margin:1rem 0;border-radius:8px;border:1px solid var(--border);background:var(--surface);}
+table{width:100%;border-collapse:collapse;font-size:.88rem;}
+th{background:var(--primary);color:#fff;padding:.65rem .9rem;text-align:left;font-weight:650;white-space:nowrap;}
+td{padding:.6rem .9rem;border-bottom:1px solid var(--border);vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+tr:nth-child(even) td{background:#f8fbff;}
+tr:hover td{background:#ecfeff;}
+.highlight{border-left:4px solid var(--primary);background:#ecfeff;padding:1rem 1.2rem;border-radius:0 8px 8px 0;margin:1rem 0;}
+.highlight.warning{border-color:var(--warning);background:#fffbeb;}
+.highlight.danger{border-color:var(--danger);background:#fef2f2;}
+.highlight.success{border-color:var(--success);background:#f0fdf4;}
+.highlight p{margin:0;font-size:.88rem;}
+.tag{display:inline-block;padding:.18rem .55rem;border-radius:12px;font-size:.74rem;font-weight:650;margin:.1rem;white-space:nowrap;}
+.tag-blue{background:#dbeafe;color:#1d4ed8;}
+.tag-green{background:#dcfce7;color:#166534;}
+.tag-orange{background:#ffedd5;color:#c2410c;}
+.tag-purple{background:#f3e8ff;color:#7e22ce;}
+.tag-red{background:#fee2e2;color:#b91c1c;}
+.tag-gray{background:#e5e7eb;color:#374151;}
+.code-block{background:var(--code-bg);color:var(--code-text);padding:1.1rem 1.4rem;border-radius:8px;overflow-x:auto;font-family:'Cascadia Code','Fira Code',Consolas,monospace;font-size:.82rem;line-height:1.65;margin:1rem 0;}
+.flow{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin:1rem 0;}
+.flow-step{background:var(--primary);color:#fff;padding:.42rem .85rem;border-radius:8px;font-size:.82rem;font-weight:700;white-space:nowrap;}
+.flow-step.alt{background:var(--accent);}
+.flow-step.success{background:var(--success);}
+.flow-step.info{background:var(--info);}
+.flow-arrow{font-size:1.1rem;color:var(--text-secondary);}
+.phase-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:1rem;margin:1.5rem 0;}
+.phase-card{border-radius:12px;padding:1.25rem;border-left:5px solid var(--primary);background:var(--surface);}
+.phase-card.active{border-color:var(--primary);background:#ecfeff;}
+.phase-card.next{border-color:var(--warning);background:#fffbeb;}
+.phase-card.future{border-color:#64748b;background:#f8fafc;}
+.phase-card.done{border-color:var(--success);background:#f0fdf4;}
+.phase-card .phase-tag{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:.4rem;color:var(--primary);}
+.phase-card h4{font-size:.95rem;color:var(--text);margin:0 0 .5rem;}
+.phase-card ul{padding-left:1.1rem;}
+.phase-card li{font-size:.82rem;}
+.risk-high{color:var(--danger);font-weight:800;}
+.risk-med{color:var(--warning);font-weight:800;}
+.risk-low{color:var(--success);font-weight:800;}
+.mermaid{display:flex;justify-content:center;background:#fff;padding:1.5rem;border-radius:12px;margin:1.5rem 0;border:1px solid var(--border);overflow-x:auto;}
+footer{text-align:center;padding:2rem;background:var(--code-bg);color:rgba(255,255,255,.68);font-size:.8rem;}
+footer strong{color:rgba(255,255,255,.95);}
+@media(max-width:760px){nav{height:auto;min-height:56px;padding:.7rem 1rem;align-items:flex-start;gap:.5rem;flex-direction:column}.hero{margin-top:96px;padding:3rem 1rem 2.4rem}.hero h1{font-size:2rem}.section-wrap{padding:2.2rem 1rem}.section-header{align-items:flex-start}.nav-links{justify-content:flex-start!important}}
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo">Event Booking PRD</div>
+  <ul class="nav-links">
+    <li><a href="#overview">Tổng quan</a></li>
+    <li><a href="#features">Chức năng</a></li>
+    <li><a href="#api">API</a></li>
+    <li><a href="#data">Data</a></li>
+    <li><a href="#frontend">Frontend</a></li>
+    <li><a href="#gaps">Gap</a></li>
+    <li><a href="#diagrams">Diagram</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#risks">Rủi ro</a></li>
+  </ul>
+</nav>
+
+<header class="hero">
+  <h1>Event Booking App v1.0</h1>
+  <p class="subtitle">Product Requirements Document cho nền tảng tìm kiếm sự kiện, đặt vé, thanh toán, quản lý vé và định hướng frontend React.</p>
+  <div class="badges">
+    <span class="badge hot">MVP Product Spec</span>
+    <span class="badge">Spring Boot</span>
+    <span class="badge">React + Vite</span>
+    <span class="badge">MySQL</span>
+    <span class="badge">JWT</span>
+  </div>
+</header>
+
+<main>
+<section id="overview">
+  <div class="section-wrap">
+    <div class="section-header">
+      <div class="icon">01</div>
+      <div>
+        <div class="section-num">Overview</div>
+        <h2>Tổng Quan Sản Phẩm</h2>
+      </div>
+    </div>
+    <p>Event Booking App là hệ thống giúp người dùng khám phá sự kiện, xem chi tiết, đặt vé, thanh toán và quản lý vé đã mua. Admin quản trị danh sách sự kiện, còn frontend React đóng vai trò giao diện chính cho người dùng cuối và admin.</p>
+    <div class="stats-row">
+      <div class="stat-card"><div class="value">9</div><div class="label">Nhóm chức năng</div></div>
+      <div class="stat-card"><div class="value">8+</div><div class="label">Endpoint target</div></div>
+      <div class="stat-card"><div class="value">6</div><div class="label">Bảng dữ liệu lõi</div></div>
+      <div class="stat-card"><div class="value">4</div><div class="label">Phase phát triển</div></div>
+    </div>
+    <div class="highlight">
+      <p><strong>Nguồn tài liệu:</strong> PRD này dựa trên `Event Booking App_API Specs_V1.0.pdf`, codebase Spring Boot tại `C:\Event_Booking_App\Event-Booking-App`, và hiện trạng triển khai backend đã được khảo sát.</p>
+    </div>
+    <h3>Mục tiêu cốt lõi</h3>
+    <div class="card-grid">
+      <div class="card"><div class="card-icon">A</div><h3>Khám phá sự kiện</h3><p>Cho phép người dùng xem sự kiện phổ biến, sắp diễn ra, gần vị trí hiện tại và tìm kiếm theo từ khóa.</p></div>
+      <div class="card"><div class="card-icon">B</div><h3>Đặt vé nhanh</h3><p>Người dùng chọn số lượng vé, tạo booking và nhận tổng tiền rõ ràng trước khi thanh toán.</p></div>
+      <div class="card"><div class="card-icon">C</div><h3>Quản lý vé</h3><p>Sau thanh toán, người dùng xem lại vé/booking của mình và trạng thái thanh toán.</p></div>
+      <div class="card"><div class="card-icon">D</div><h3>Quản trị sự kiện</h3><p>Admin có quyền tạo, cập nhật và xóa sự kiện với kiểm soát JWT/role.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="features" class="alt-bg">
+  <div class="section-wrap">
+    <div class="section-header">
+      <div class="icon">02</div>
+      <div>
+        <div class="section-num">Feature Catalog</div>
+        <h2>Danh Mục Chức Năng Hệ Thống</h2>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="card"><div class="card-icon">F1</div><h3>Auth & JWT</h3><p>Đăng ký, đăng nhập, cấp access token, bảo vệ endpoint bằng `Authorization: Bearer`.</p><span class="tag tag-green">MVP</span><span class="tag tag-orange">Cần đồng bộ email/username</span></div>
+      <div class="card"><div class="card-icon">F2</div><h3>Events</h3><p>Danh sách, chi tiết, tìm kiếm, filter popular/upcoming/nearby và CRUD cho admin.</p><span class="tag tag-green">Core</span><span class="tag tag-blue">Admin</span></div>
+      <div class="card"><div class="card-icon">F3</div><h3>Booking</h3><p>Tạo booking theo eventId và quantity, tính totalPrice, trạng thái PENDING/PAID/CANCELLED.</p><span class="tag tag-green">Core</span></div>
+      <div class="card"><div class="card-icon">F4</div><h3>Tickets</h3><p>Xem vé của tôi sau khi đặt vé/thanh toán, hiển thị event, quantity và status.</p><span class="tag tag-purple">User</span></div>
+      <div class="card"><div class="card-icon">F5</div><h3>Payment</h3><p>Thanh toán booking chưa paid, validate booking và thông tin card ở MVP.</p><span class="tag tag-orange">Payment Mock</span></div>
+      <div class="card"><div class="card-icon">F6</div><h3>User Profile</h3><p>Cập nhật fullName, avatar URL và cài đặt nhắc nhở sự kiện.</p><span class="tag tag-purple">Profile</span></div>
+      <div class="card"><div class="card-icon">F7</div><h3>Admin Console</h3><p>Quản lý danh sách sự kiện, tạo/sửa/xóa, xử lý lỗi 401/403 rõ ràng.</p><span class="tag tag-blue">ADMIN</span></div>
+      <div class="card"><div class="card-icon">F8</div><h3>React Frontend</h3><p>React + Vite, Router, API client, auth state và các màn hình end-to-end.</p><span class="tag tag-green">New</span></div>
+      <div class="card"><div class="card-icon">F9</div><h3>Extensions</h3><p>Wishlist, QR ticket, refund, notification, analytics, ticket tier, upload ảnh, payment gateway thật.</p><span class="tag tag-gray">Future</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="api">
+  <div class="section-wrap">
+    <div class="section-header">
+      <div class="icon">03</div>
+      <div>
+        <div class="section-num">REST API</div>
+        <h2>Backend API Target</h2>
+      </div>
+    </div>
+    <p>API target sử dụng response envelope thống nhất gồm `success`, `message`, `data` hoặc `errors`. Tất cả endpoint ngoài auth yêu cầu JWT hợp lệ.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Module</th><th>Method</th><th>Endpoint</th><th>Quyền</th><th>Mục đích</th></tr></thead>
+        <tbody>
+          <tr><td>Auth</td><td>POST</td><td><code>/api/auth/register</code></td><td>Public</td><td>Tạo tài khoản bằng fullName, email, password.</td></tr>
+          <tr><td>Auth</td><td>POST</td><td><code>/api/auth/login</code></td><td>Public</td><td>Xác thực và trả JWT accessToken.</td></tr>
+          <tr><td>Events</td><td>GET</td><td><code>/api/events</code></td><td>Public/User</td><td>Lấy danh sách, search, type, page, size.</td></tr>
+          <tr><td>Events</td><td>GET</td><td><code>/api/events/{id}</code></td><td>Public/User</td><td>Xem chi tiết sự kiện.</td></tr>
+          <tr><td>Events</td><td>POST/PUT/DELETE</td><td><code>/api/events</code>, <code>/api/events/{id}</code></td><td>ADMIN</td><td>Tạo, cập nhật, xóa sự kiện.</td></tr>
+          <tr><td>Booking</td><td>POST</td><td><code>/api/bookings</code></td><td>USER</td><td>Đặt vé theo eventId và quantity.</td></tr>
+          <tr><td>Tickets</td><td>GET</td><td><code>/api/tickets</code></td><td>USER</td><td>Xem vé/booking của người dùng.</td></tr>
+          <tr><td>Payment</td><td>POST</td><td><code>/api/payments</code></td><td>USER</td><td>Thanh toán booking chưa paid.</td></tr>
+          <tr><td>User</td><td>PUT</td><td><code>/api/users/profile</code></td><td>USER</td><td>Cập nhật fullName và avatar.</td></tr>
+          <tr><td>User</td><td>PUT</td><td><code>/api/users/reminders</code></td><td>USER</td><td>Bật/tắt nhắc nhở sự kiện.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Response Envelope</h3>
+    <div class="code-block">{
+  "success": true,
+  "message": "Operation successful",
+  "data": {}
+}</div>
+    <div class="code-block">{
+  "success": false,
+  "message": "Validation failed",
+  "errors": [
+    { "field": "email", "message": "Invalid email format" }
+  ]
+}</div>
+  </div>
+</section>
+
+<section id="data" class="alt-bg">
+  <div class="section-wrap">
+    <div class="section-header">
+      <div class="icon">04</div>
+      <div>
+        <div class="section-num">Data Model</div>
+        <h2>Schema Dữ Liệu Mục Tiêu</h2>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Bảng</th><th>Trường chính</th><th>Quan hệ</th><th>Ghi chú</th></tr></thead>
+        <tbody>
+          <tr><td><code>users</code></td><td>id, full_name, email, password, avatar, role, created_at</td><td>1-N bookings, 1-1 reminders</td><td>Mật khẩu BCrypt; role target là USER/ADMIN.</td></tr>
+          <tr><td><code>events</code></td><td>id, title, date_time, location, latitude, longitude, price, description, image_url</td><td>1-N bookings</td><td>latitude/longitude phục vụ nearby.</td></tr>
+          <tr><td><code>bookings</code></td><td>id, user_id, event_id, quantity, total_price, status, created_at</td><td>N-1 users, N-1 events, 1-1 payments</td><td>Status: PENDING, PAID, CANCELLED.</td></tr>
+          <tr><td><code>payments</code></td><td>id, booking_id, amount, status, created_at</td><td>1-1 bookings</td><td>Status: PAID, FAILED.</td></tr>
+          <tr><td><code>reminders</code></td><td>id, user_id, event_reminder, created_at</td><td>1-1 users</td><td>Cài đặt nhắc nhở theo user.</td></tr>
+          <tr><td><code>tickets</code></td><td>id, ticket_code, booking_id</td><td>N-1 bookings</td><td>Sinh sau booking/payment thành công.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="highlight warning">
+      <p><strong>Implementation note:</strong> Code hiện tại có `roles` và `user_roles`, trong khi PDF target mô tả role enum trong `users`. Cần chọn một hướng và đồng bộ API, entity, security, frontend.</p>
+    </div>
+  </div>
+</section>
+
+<section id="frontend">
+  <div class="section-wrap">
+    <div class="section-header">
+      <div class="icon">05</div>
+      <div>
+        <div class="section-num">React Frontend</div>
+        <h2>Định Hướng Frontend React</h2>
+      </div>
+    </div>
+    <p>Frontend React là phần đề xuất triển khai tiếp để biến backend API thành trải nghiệm sản phẩm hoàn chỉnh. MVP không cần SSR; Vite là lựa chọn nhẹ, nhanh và phù hợp dự án học tập/MVP.</p>
+    <div class="card-grid">
+      <div class="card"><h3>Stack</h3><ul><li>React + Vite</li><li>React Router</li><li>Axios hoặc Fetch wrapper</li><li>Context API hoặc Zustand</li><li>Tailwind, CSS Modules hoặc SCSS</li></ul></div>
+      <div class="card"><h3>Routes</h3><ul><li><code>/</code> danh sách sự kiện</li><li><code>/events/:id</code> chi tiết</li><li><code>/login</code>, <code>/register</code></li><li><code>/tickets</code>, <code>/profile</code></li><li><code>/admin/events</code></li></ul></div>
+      <div class="card"><h3>API Client</h3><ul><li>Gắn JWT tự động</li><li>Redirect login khi 401</li><li>Hiển thị 403 rõ ràng</li><li>Parse validation `errors`</li><li>Chuẩn hóa loading/error state</li></ul></div>
+    </div>
+    <h3>Luồng UI chính</h3>
+    <div class="flow">
+      <span class="flow-step">Event Listing</span><span class="flow-arrow">→</span>
+      <span class="flow-step">Event Detail</span><span class="flow-arrow">→</span>
+      <span class="flow-step alt">Booking</span><span class="flow-arrow">→</span>
+      <span class="flow-step info">Payment</span><span class="flow-arrow">→</span>
+      <span class="flow-step success">My Tickets</span>
+    </div>
+  </div>
+</section>
+
+<section id="gaps" class="alt-bg">
+  <div class="section-wrap">
+    <div class="section-header">
+      <div class="icon">06</div>
+      <div>
+        <div class="section-num">Implementation Gap</div>
+        <h2>Khoảng Cách Giữa Spec Và Code Hiện Tại</h2>
+      </div>
+    </div>
+    <div class="highlight danger">
+      <p><strong>Build snapshot:</strong> `.\mvnw.cmd -q test` hiện fail tại `src/main/java/com/eventbooking/config/SecurityConfig.java` với lỗi compile. PRD này không sửa backend code, chỉ ghi nhận hiện trạng.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Khu vực</th><th>Spec mục tiêu</th><th>Code hiện tại</th><th>Hành động đề xuất</th></tr></thead>
+        <tbody>
+          <tr><td>Auth</td><td>Login bằng email, register fullName/email/password.</td><td>DTO dùng username; AuthController thiếu annotation.</td><td>Chọn contract email/fullName theo spec và đồng bộ DTO/entity/service.</td></tr>
+          <tr><td>Security</td><td>JWT bảo vệ endpoint, 401/403 chuẩn.</td><td>SecurityConfig lỗi cú pháp; JWT filter/service skeleton.</td><td>Sửa compile, thêm `@Configuration`, hoàn thiện filter/service.</td></tr>
+          <tr><td>Repository</td><td>Spring Data JPA repository.</td><td>Nhiều repository đang là class rỗng.</td><td>Chuyển thành interface extends `JpaRepository`.</td></tr>
+          <tr><td>Service</td><td>Auth/Event/Booking/Payment xử lý nghiệp vụ.</td><td>Event/Booking/Payment service implementation skeleton.</td><td>Hoàn thiện nghiệp vụ theo API spec.</td></tr>
+          <tr><td>Events</td><td>CRUD admin, list filter, detail.</td><td>Controller mới có GET list/detail.</td><td>Thêm POST/PUT/DELETE và filter query.</td></tr>
+          <tr><td>Tickets/User</td><td>`/api/tickets`, profile, reminders.</td><td>Chưa có TicketController; UserController rỗng.</td><td>Thêm endpoint, DTO, service.</td></tr>
+          <tr><td>Payment</td><td>Request body có bookingId/cardNumber/expiry/cvv.</td><td>PaymentController dùng request param bookingId.</td><td>Tạo PaymentRequest và response chuẩn.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="diagrams">
+  <div class="section-wrap">
+    <div class="section-header">
+      <div class="icon">07</div>
+      <div>
+        <div class="section-num">Architecture</div>
+        <h2>Class Diagram Và Sequence Diagram</h2>
+      </div>
+    </div>
+    <h3>Class Diagram - Domain Chính</h3>
+    <pre class="mermaid">
+classDiagram
+  class User {
+    +Long id
+    +String fullName
+    +String email
+    +String password
+    +String avatar
+    +Role role
+  }
+  class Event {
+    +Long id
+    +String title
+    +LocalDateTime dateTime
+    +String location
+    +BigDecimal price
+    +String imageUrl
+  }
+  class Booking {
+    +Long id
+    +Integer quantity
+    +BigDecimal totalPrice
+    +BookingStatus status
+  }
+  class Payment {
+    +Long id
+    +BigDecimal amount
+    +PaymentStatus status
+  }
+  class Ticket {
+    +Long id
+    +String ticketCode
+  }
+  class Reminder {
+    +Long id
+    +Boolean eventReminder
+  }
+  User "1" --> "*" Booking
+  Event "1" --> "*" Booking
+  Booking "1" --> "1" Payment
+  Booking "1" --> "*" Ticket
+  User "1" --> "1" Reminder
+    </pre>
+    <h3>Sequence Diagram - Đặt Vé Và Thanh Toán</h3>
+    <pre class="mermaid">
+sequenceDiagram
+  actor User
+  participant FE as React Frontend
+  participant API as Spring Boot API
+  participant DB as MySQL
+  User->>FE: Chọn sự kiện và số lượng vé
+  FE->>API: POST /api/bookings
+  API->>DB: Kiểm tra event và tạo booking PENDING
+  DB-->>API: Booking created
+  API-->>FE: bookingId, totalPrice
+  User->>FE: Nhập thông tin thanh toán
+  FE->>API: POST /api/payments
+  API->>DB: Validate booking unpaid
+  API->>DB: Tạo payment PAID và cập nhật booking
+  DB-->>API: Payment success
+  API-->>FE: paymentId, status PAID
+  FE-->>User: Hiển thị vé của tôi
+    </pre>
+  </div>
+</section>
+
+<section id="roadmap" class="alt-bg">
+  <div class="section-wrap">
+    <div class="section-header">
+      <div class="icon">08</div>
+      <div>
+        <div class="section-num">Roadmap</div>
+        <h2>Lộ Trình Phát Triển</h2>
+      </div>
+    </div>
+    <div class="phase-grid">
+      <div class="phase-card active"><div class="phase-tag">Phase 1</div><h4>Sửa backend để chạy được</h4><ul><li>Sửa `SecurityConfig`.</li><li>Hoàn thiện annotation còn thiếu.</li><li>Chuyển repository thành Spring Data JPA.</li><li>Chuẩn hóa exception/response.</li></ul></div>
+      <div class="phase-card next"><div class="phase-tag">Phase 2</div><h4>Đồng bộ API Spec V1.0</h4><ul><li>Email/fullName contract.</li><li>CRUD events cho admin.</li><li>Tickets/profile/reminders.</li><li>Payment request body.</li></ul></div>
+      <div class="phase-card future"><div class="phase-tag">Phase 3</div><h4>React MVP</h4><ul><li>Scaffold React + Vite.</li><li>Auth flow.</li><li>Event listing/detail.</li><li>Booking/payment/tickets.</li><li>Admin event management.</li></ul></div>
+      <div class="phase-card future"><div class="phase-tag">Phase 4</div><h4>Mở rộng sản phẩm</h4><ul><li>QR ticket.</li><li>Notification thật.</li><li>Analytics dashboard.</li><li>Upload ảnh.</li><li>Payment gateway thật.</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section id="risks">
+  <div class="section-wrap">
+    <div class="section-header">
+      <div class="icon">09</div>
+      <div>
+        <div class="section-num">Risk Management</div>
+        <h2>Rủi Ro Và Biện Pháp Giảm Thiểu</h2>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Rủi ro</th><th>Mức độ</th><th>Tác động</th><th>Giảm thiểu</th></tr></thead>
+        <tbody>
+          <tr><td>Backend chưa build pass do lỗi `SecurityConfig`.</td><td><span class="risk-high">Cao</span></td><td>Không chạy được API để frontend tích hợp.</td><td>Ưu tiên sửa compile/security trước mọi feature mới.</td></tr>
+          <tr><td>Lệch contract đăng nhập username/email.</td><td><span class="risk-high">Cao</span></td><td>Frontend và API không thống nhất auth flow.</td><td>Chọn email/fullName theo PDF hoặc ghi rõ backward compatibility.</td></tr>
+          <tr><td>Service/repository skeleton gây lỗi runtime.</td><td><span class="risk-high">Cao</span></td><td>Endpoint tồn tại nhưng không xử lý nghiệp vụ.</td><td>Hoàn thiện Spring Data repository và service theo từng module.</td></tr>
+          <tr><td>Payment MVP chỉ là giả lập.</td><td><span class="risk-med">Trung bình</span></td><td>Không phù hợp production.</td><td>Tách PaymentService interface để thay bằng Stripe/VNPay/MoMo sau.</td></tr>
+          <tr><td>Nearby cần latitude/longitude nhưng entity chưa có.</td><td><span class="risk-med">Trung bình</span></td><td>Không triển khai được filter nearby đúng nghĩa.</td><td>Bổ sung field GPS và migration/schema trước khi làm nearby.</td></tr>
+          <tr><td>Role model enum vs bảng roles chưa thống nhất.</td><td><span class="risk-med">Trung bình</span></td><td>403/ADMIN route dễ sai.</td><td>Chốt một model role và đồng bộ SecurityConfig, JWT claims, frontend guard.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <p><strong>Event Booking App PRD v1.0</strong> - HTML product document generated from API Spec V1.0 and current Spring Boot codebase snapshot.</p>
+</footer>
+
+<script>
+mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose' });
+</script>
+</body>
+</html>

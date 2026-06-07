@@ -1,4 +1,5 @@
 package com.eventbooking.service;
 
-public class PaymentService {
+public interface PaymentService {
+    void pay(Long bookingId);
 }
