@@ -21,6 +21,10 @@ public class Booking {
 
     private Integer quantity;
 
+    private Double totalPrice;
+
+    private String status;
+
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;

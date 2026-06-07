@@ -1,13 +1,11 @@
 package com.eventbooking.controller;
 
-import com.eventbooking.dto.booking.BookingRequest;
-import com.eventbooking.dto.booking.BookingResponse;
-import com.eventbooking.service.BookingService;
+import com.eventbooking.dto.payment.PaymentRequest;
+import com.eventbooking.dto.payment.PaymentResponse;
 import com.eventbooking.service.PaymentService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/payments")
@@ -17,7 +15,7 @@ public class PaymentController {
     private final PaymentService paymentService;
 
     @PostMapping
-    public void pay(@RequestParam Long bookingId){
-        paymentService.pay(bookingId);
+    public PaymentResponse pay(@Valid @RequestBody PaymentRequest request){
+        return paymentService.pay(request);
     }
 }

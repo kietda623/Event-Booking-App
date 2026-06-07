@@ -20,11 +20,15 @@ public class User {
     @Column(unique = true, nullable = false)
     private String username;
 
+    private String fullName;
+
     @Column(nullable = false)
     private String password;
 
     @Column(unique = true)
     private String email;
+
+    private String avatar;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(

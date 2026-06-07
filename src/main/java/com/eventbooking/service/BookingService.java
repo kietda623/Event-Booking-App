@@ -8,4 +8,5 @@ import java.util.List;
 public interface BookingService {
     BookingResponse book(BookingRequest request);
     List<BookingResponse> myBookings();
+    BookingResponse cancel(Long id);
 }

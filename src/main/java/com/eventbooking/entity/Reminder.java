@@ -5,8 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Entity
 @Table(name = "reminders")
 @Data
@@ -17,11 +15,9 @@ public class Reminder {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private LocalDateTime remindTime;
+    private Boolean eventReminder;
 
-    private String message;
-
-    @ManyToOne
-    @JoinColumn(name = "event_id")
-    private Event event;
+    @OneToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 }
