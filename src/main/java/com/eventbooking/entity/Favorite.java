@@ -12,6 +12,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(
         name = "favorites",
@@ -32,4 +34,13 @@ public class Favorite {
     @ManyToOne
     @JoinColumn(name = "event_id")
     private Event event;
+
+    private LocalDateTime createdAt;
+
+    @jakarta.persistence.PrePersist
+    void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }

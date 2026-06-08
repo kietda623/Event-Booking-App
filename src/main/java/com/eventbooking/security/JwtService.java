@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.time.Instant;
 import java.util.Date;
 
 @Service
@@ -34,6 +35,10 @@ public class JwtService {
     }
 
     public String extractUsername(String token) {
+        return extractSubject(token);
+    }
+
+    public String extractSubject(String token) {
         return Jwts.parser()
                 .verifyWith(signingKey())
                 .build()
@@ -42,8 +47,12 @@ public class JwtService {
                 .getSubject();
     }
 
-    public boolean isValid(String token, String username) {
-        return username.equals(extractUsername(token));
+    public boolean isValid(String token, String subject) {
+        return subject.equals(extractSubject(token));
+    }
+
+    public Instant expiresAtFromNow() {
+        return Instant.now().plusMillis(expirationMs);
     }
 
     private SecretKey signingKey() {

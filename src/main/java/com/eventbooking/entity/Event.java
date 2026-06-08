@@ -29,4 +29,29 @@ public class Event {
     private Integer totalTickets;
 
     private Double ticketPrice;
+
+    private String imageUrl;
+
+    private Double latitude;
+
+    private Double longitude;
+
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
+
+    @Version
+    private Long version;
+
+    @PrePersist
+    void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

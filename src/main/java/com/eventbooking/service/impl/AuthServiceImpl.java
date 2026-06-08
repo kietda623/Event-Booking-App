@@ -5,13 +5,14 @@ import com.eventbooking.dto.auth.LoginRequest;
 import com.eventbooking.dto.auth.RegisterRequest;
 import com.eventbooking.entity.Role;
 import com.eventbooking.entity.User;
+import com.eventbooking.dto.auth.AuthResponse.AuthUserResponse;
 import com.eventbooking.exception.BusinessException;
-import com.eventbooking.exception.ResourceNotFoundException;
 import com.eventbooking.repository.RoleRepository;
 import com.eventbooking.repository.UserRepository;
 import com.eventbooking.security.JwtService;
 import com.eventbooking.service.AuthService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -29,37 +30,58 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new BusinessException("Username already exists");
-        }
-        if (request.getEmail() != null && userRepository.existsByEmail(request.getEmail())) {
-            throw new BusinessException("Email already exists");
+        String email = normalizeEmail(request.getEmail());
+        if (userRepository.existsByEmail(email)) {
+            throw new BusinessException("EMAIL_ALREADY_EXISTS", "Email already exists", HttpStatus.CONFLICT);
         }
 
         Role role = roleRepository.findByName("USER")
                 .orElseGet(() -> roleRepository.save(new Role(null, "USER")));
 
         User user = new User();
-        user.setUsername(request.getUsername());
-        user.setFullName(request.getUsername());
-        user.setEmail(request.getEmail());
+        user.setUsername(email);
+        user.setFullName(request.getFullName());
+        user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRoles(new HashSet<>(Set.of(role)));
-        userRepository.save(user);
+        User saved = userRepository.save(user);
 
-        String token = jwtService.generateToken(user.getUsername());
-        return new AuthResponse(token, user.getUsername());
+        return toAuthResponse(saved);
     }
 
     @Override
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        String email = normalizeEmail(request.getEmail());
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(this::invalidCredentials);
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new BusinessException("Invalid credentials");
+            throw invalidCredentials();
         }
 
-        String token = jwtService.generateToken(user.getUsername());
-        return new AuthResponse(token, user.getUsername());
+        return toAuthResponse(user);
+    }
+
+    private AuthResponse toAuthResponse(User user) {
+        String token = jwtService.generateToken(user.getEmail());
+        return new AuthResponse(
+                token,
+                jwtService.expiresAtFromNow().toString(),
+                new AuthUserResponse(user.getId(), user.getFullName(), user.getEmail(), roleName(user))
+        );
+    }
+
+    private String roleName(User user) {
+        return user.getRoles().stream()
+                .findFirst()
+                .map(Role::getName)
+                .orElse("USER");
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
+    }
+
+    private BusinessException invalidCredentials() {
+        return new BusinessException("INVALID_CREDENTIALS", "Invalid credentials", HttpStatus.UNAUTHORIZED);
     }
 }

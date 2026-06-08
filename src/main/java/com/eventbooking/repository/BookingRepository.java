@@ -1,6 +1,8 @@
 package com.eventbooking.repository;
 
 import com.eventbooking.entity.Booking;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -9,9 +11,24 @@ import java.util.List;
 import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
-    List<Booking> findByUserUsernameOrderByBookingDateDesc(String username);
-    Optional<Booking> findByIdAndUserUsername(Long id, String username);
+    Page<Booking> findByUserEmailOrderByBookingDateDesc(String email, Pageable pageable);
+    Optional<Booking> findByIdAndUserEmail(Long id, String email);
+    Page<Booking> findByEventIdOrderByBookingDateDesc(Long eventId, Pageable pageable);
 
     @Query("select coalesce(sum(b.quantity), 0) from Booking b where b.event.id = :eventId and b.status <> 'CANCELLED'")
     Long sumBookedQuantityByEventId(@Param("eventId") Long eventId);
+
+    long countByStatus(String status);
+
+    @Query("select coalesce(sum(b.totalPrice), 0) from Booking b where b.status = 'PAID'")
+    Double sumPaidRevenue();
+
+    @Query("""
+            select b.event.id, b.event.title, coalesce(sum(b.quantity), 0)
+            from Booking b
+            where b.status = 'PAID'
+            group by b.event.id, b.event.title
+            order by coalesce(sum(b.quantity), 0) desc
+            """)
+    List<Object[]> findTopEventsByPaidQuantity(Pageable pageable);
 }

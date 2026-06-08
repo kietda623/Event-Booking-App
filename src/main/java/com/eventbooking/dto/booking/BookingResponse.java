@@ -21,4 +21,6 @@ public class BookingResponse {
     private LocalDateTime bookingTime;
 
     private String status;
+
+    private String refundStatus;
 }

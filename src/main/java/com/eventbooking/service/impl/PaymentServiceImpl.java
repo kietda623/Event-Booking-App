@@ -12,6 +12,7 @@ import com.eventbooking.repository.PaymentRepository;
 import com.eventbooking.repository.TicketRepository;
 import com.eventbooking.service.PaymentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,19 +30,18 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentResponse pay(PaymentRequest request) {
-        Booking booking = bookingRepository.findByIdAndUserUsername(request.getBookingId(), currentUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        Booking booking = findOwnedBooking(request.getBookingId());
         if ("PAID".equals(booking.getStatus()) || paymentRepository.existsByBookingIdAndStatus(booking.getId(), "PAID")) {
-            throw new BusinessException("Booking is already paid");
+            throw new BusinessException("BOOKING_ALREADY_PAID", "Booking is already paid", HttpStatus.CONFLICT);
         }
-        if ("CANCELLED".equals(booking.getStatus())) {
-            throw new BusinessException("Cancelled bookings cannot be paid");
+        if (!"PENDING".equals(booking.getStatus())) {
+            throw new BusinessException("BOOKING_NOT_PENDING", "Only pending bookings can be paid", HttpStatus.CONFLICT);
         }
 
         Payment payment = new Payment();
         payment.setBooking(booking);
         payment.setAmount(booking.getTotalPrice());
-        payment.setMethod(request.getMethod() != null ? request.getMethod() : "MOCK_CARD");
+        payment.setMethod(request.getMethod());
         payment.setStatus("PAID");
         payment.setPaymentDate(LocalDateTime.now());
 
@@ -51,13 +51,48 @@ public class PaymentServiceImpl implements PaymentService {
 
         Ticket ticket = new Ticket();
         ticket.setBooking(booking);
-        ticket.setTicketCode("TICKET-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
-        ticketRepository.save(ticket);
+        ticket.setTicketCode(UUID.randomUUID().toString());
+        ticket.setTicketType("GENERAL");
+        ticket.setStatus("ACTIVE");
+        ticket.setCheckedIn(false);
+        Ticket savedTicket = ticketRepository.save(ticket);
 
-        return new PaymentResponse(saved.getId(), booking.getId(), saved.getAmount(), saved.getStatus());
+        return toResponse(saved, savedTicket);
     }
 
-    private String currentUsername() {
+    @Override
+    public PaymentResponse getPayment(Long id) {
+        Payment payment = paymentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("PAYMENT_NOT_FOUND", "Payment not found"));
+        Booking booking = payment.getBooking();
+        if (!currentEmail().equalsIgnoreCase(booking.getUser().getEmail())) {
+            throw new BusinessException("BOOKING_NOT_OWNED", "Booking is not owned by current user", HttpStatus.FORBIDDEN);
+        }
+        Ticket ticket = ticketRepository.findFirstByBookingIdOrderByIdDesc(booking.getId()).orElse(null);
+        return toResponse(payment, ticket);
+    }
+
+    private Booking findOwnedBooking(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("BOOKING_NOT_FOUND", "Booking not found"));
+        if (!currentEmail().equalsIgnoreCase(booking.getUser().getEmail())) {
+            throw new BusinessException("BOOKING_NOT_OWNED", "Booking is not owned by current user", HttpStatus.FORBIDDEN);
+        }
+        return booking;
+    }
+
+    private PaymentResponse toResponse(Payment payment, Ticket ticket) {
+        return new PaymentResponse(
+                payment.getId(),
+                payment.getBooking().getId(),
+                payment.getAmount(),
+                payment.getStatus(),
+                ticket == null ? null : ticket.getId(),
+                ticket == null ? null : ticket.getTicketCode()
+        );
+    }
+
+    private String currentEmail() {
         return SecurityContextHolder.getContext().getAuthentication().getName();
     }
 }

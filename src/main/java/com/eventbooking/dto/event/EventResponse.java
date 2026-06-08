@@ -21,4 +21,14 @@ public class EventResponse {
     private Double price;
 
     private Integer availableTickets;
+
+    private String imageUrl;
+
+    private Double latitude;
+
+    private Double longitude;
+
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
 }

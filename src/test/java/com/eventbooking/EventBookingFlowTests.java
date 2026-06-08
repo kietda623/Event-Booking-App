@@ -1,20 +1,38 @@
 package com.eventbooking;
 
 import com.eventbooking.entity.Event;
+import com.eventbooking.entity.Role;
+import com.eventbooking.entity.User;
+import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.EventRepository;
+import com.eventbooking.repository.FavoriteRepository;
+import com.eventbooking.repository.PaymentRepository;
+import com.eventbooking.repository.ReminderRepository;
+import com.eventbooking.repository.RoleRepository;
+import com.eventbooking.repository.TicketRepository;
 import com.eventbooking.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -26,7 +44,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Transactional
 class EventBookingFlowTests {
     @Autowired
     private MockMvc mockMvc;
@@ -40,430 +57,332 @@ class EventBookingFlowTests {
     @Autowired
     private UserRepository userRepository;
 
-    @Test
-    void registerPersistsUserAndReturnsJwt() throws Exception {
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of(
-                                "username", "alice",
-                                "password", "password123",
-                                "email", "alice@example.com"
-                        ))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").isString())
-                .andExpect(jsonPath("$.username").value("alice"));
+    @Autowired
+    private RoleRepository roleRepository;
 
-        assertThat(userRepository.findByUsername("alice")).isPresent();
+    @Autowired
+    private BookingRepository bookingRepository;
+
+    @Autowired
+    private PaymentRepository paymentRepository;
+
+    @Autowired
+    private TicketRepository ticketRepository;
+
+    @Autowired
+    private FavoriteRepository favoriteRepository;
+
+    @Autowired
+    private ReminderRepository reminderRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    private ExecutorService executor;
+
+    @BeforeEach
+    void cleanDatabase() {
+        ticketRepository.deleteAll();
+        paymentRepository.deleteAll();
+        favoriteRepository.deleteAll();
+        reminderRepository.deleteAll();
+        bookingRepository.deleteAll();
+        eventRepository.deleteAll();
+        userRepository.deleteAll();
+    }
+
+    @AfterEach
+    void shutdownExecutor() {
+        if (executor != null) {
+            executor.shutdownNow();
+        }
     }
 
     @Test
-    void userCanBookPayAndSeeTicket() throws Exception {
-        Event event = new Event();
-        event.setTitle("Conference");
-        event.setDescription("Developer conference");
-        event.setLocation("HCMC");
-        event.setEventDate(LocalDateTime.now().plusDays(7));
-        event.setTotalTickets(10);
-        event.setTicketPrice(25.0);
-        Event savedEvent = eventRepository.save(event);
-
-        String token = registerAndToken("bob");
-
-        mockMvc.perform(get("/api/events/" + savedEvent.getId()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.title").value("Conference"))
-                .andExpect(jsonPath("$.availableTickets").value(10));
-
-        String bookingJson = mockMvc.perform(post("/api/bookings")
-                        .header("Authorization", "Bearer " + token)
+    void registerAndLoginUseEmailFirstAndReturnAuthEnvelope() throws Exception {
+        String authJson = mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
-                                "eventId", savedEvent.getId(),
-                                "quantity", 2
+                                "fullName", "Alice Nguyen",
+                                "email", "alice@example.com",
+                                "password", "password123"
                         ))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.eventId").value(savedEvent.getId()))
-                .andExpect(jsonPath("$.quantity").value(2))
-                .andExpect(jsonPath("$.totalPrice").value(50.0))
-                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").isString())
+                .andExpect(jsonPath("$.data.accessToken").isString())
+                .andExpect(jsonPath("$.data.expiresAt").isString())
+                .andExpect(jsonPath("$.data.user.id").isNumber())
+                .andExpect(jsonPath("$.data.user.fullName").value("Alice Nguyen"))
+                .andExpect(jsonPath("$.data.user.email").value("alice@example.com"))
+                .andExpect(jsonPath("$.data.user.role").value("USER"))
+                .andExpect(jsonPath("$.data.user.username").doesNotExist())
+                .andExpect(jsonPath("$.token").doesNotExist())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        Long bookingId = objectMapper.readTree(bookingJson).get("bookingId").asLong();
 
-        mockMvc.perform(post("/api/payments")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("bookingId", bookingId))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.bookingId").value(bookingId))
-                .andExpect(jsonPath("$.amount").value(50.0))
-                .andExpect(jsonPath("$.status").value("PAID"));
-
-        mockMvc.perform(get("/api/tickets")
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].eventTitle").value("Conference"))
-                .andExpect(jsonPath("$[0].quantity").value(2))
-                .andExpect(jsonPath("$[0].status").value("PAID"));
-    }
-
-    @Test
-    void authAndSecurityFailuresReturnControlledErrors() throws Exception {
-        registerAndToken("carol");
-
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of(
-                                "username", "carol",
-                                "password", "password123",
-                                "email", "carol-copy@example.com"
-                        ))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("Username already exists"));
-
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of(
-                                "username", "carol-copy",
-                                "password", "password123",
-                                "email", "carol@example.com"
-                        ))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("Email already exists"));
+        assertThat(userRepository.findByEmail("alice@example.com")).isPresent();
+        assertThat(objectMapper.readTree(authJson).at("/data/accessToken").asText()).isNotBlank();
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
-                                "username", "carol",
+                                "email", "alice@example.com",
+                                "password", "password123"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").isString())
+                .andExpect(jsonPath("$.data.user.email").value("alice@example.com"));
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "fullName", "Alice Duplicate",
+                                "email", "alice@example.com",
+                                "password", "password123"
+                        ))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("EMAIL_ALREADY_EXISTS"))
+                .andExpect(jsonPath("$.message").isString())
+                .andExpect(jsonPath("$.errors").isArray());
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "email", "alice@example.com",
                                 "password", "wrong-password"
                         ))))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("Invalid credentials"));
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+    }
 
+    @Test
+    void authSecurityFailuresUseErrorEnvelope() throws Exception {
         mockMvc.perform(get("/api/tickets"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("Unauthorized"));
+                .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"))
+                .andExpect(jsonPath("$.message").isString())
+                .andExpect(jsonPath("$.errors").isArray());
 
-        mockMvc.perform(get("/api/tickets")
-                        .header("Authorization", "Bearer invalid-token"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("Unauthorized"));
-
-        String userToken = registerAndToken("dave");
+        String userToken = registerAndToken("Bob User", "bob@example.com");
         mockMvc.perform(post("/api/events")
                         .header("Authorization", "Bearer " + userToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(eventRequest("User Event", LocalDateTime.now().plusDays(3))))
+                        .content(eventRequest("User Event", LocalDateTime.now().plusDays(3), 100)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("Forbidden"));
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
 
     @Test
-    void adminCanCreateUpdateAndDeleteEvents() throws Exception {
-        String adminToken = loginAndToken("admin", "admin123");
+    void eventBookingPaymentTicketProfileAndFavoriteEndpointsUseResponseEnvelope() throws Exception {
+        Event savedEvent = saveEvent("Conference", 10, 25.0);
+        String token = registerAndToken("Carol Tran", "carol@example.com");
 
-        String createdJson = mockMvc.perform(post("/api/events")
-                        .header("Authorization", "Bearer " + adminToken)
+        mockMvc.perform(get("/api/events/" + savedEvent.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.title").value("Conference"))
+                .andExpect(jsonPath("$.data.availableTickets").value(10));
+
+        Long bookingId = createBooking(token, savedEvent.getId(), 2);
+
+        mockMvc.perform(get("/api/bookings/my")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].bookingId").value(bookingId))
+                .andExpect(jsonPath("$.data.content[0].status").value("PENDING"));
+
+        String paymentJson = mockMvc.perform(post("/api/payments")
+                        .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(eventRequest("Admin Event", LocalDateTime.now().plusDays(5))))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.title").value("Admin Event"))
+                        .content(json(Map.of(
+                                "bookingId", bookingId,
+                                "method", "CREDIT_CARD"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.bookingId").value(bookingId))
+                .andExpect(jsonPath("$.data.amount").value(50.0))
+                .andExpect(jsonPath("$.data.status").value("PAID"))
+                .andExpect(jsonPath("$.data.ticketId").isNumber())
+                .andExpect(jsonPath("$.data.ticketCode").isString())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        Long eventId = objectMapper.readTree(createdJson).get("id").asLong();
+        String ticketCode = objectMapper.readTree(paymentJson).at("/data/ticketCode").asText();
 
-        mockMvc.perform(put("/api/events/" + eventId)
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(eventRequest("Updated Admin Event", LocalDateTime.now().plusDays(6))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.title").value("Updated Admin Event"));
-
-        mockMvc.perform(delete("/api/events/" + eventId)
-                        .header("Authorization", "Bearer " + adminToken))
-                .andExpect(status().isNoContent());
-    }
-
-    @Test
-    void eventsSupportPaginationSearchSortAndUpcomingFilter() throws Exception {
-        Event oldEvent = new Event();
-        oldEvent.setTitle("Past Meetup");
-        oldEvent.setDescription("Past");
-        oldEvent.setLocation("Hanoi");
-        oldEvent.setEventDate(LocalDateTime.now().minusDays(2));
-        oldEvent.setTotalTickets(20);
-        oldEvent.setTicketPrice(10.0);
-        eventRepository.save(oldEvent);
-
-        Event futureEvent = new Event();
-        futureEvent.setTitle("Future Meetup");
-        futureEvent.setDescription("Future");
-        futureEvent.setLocation("HCMC");
-        futureEvent.setEventDate(LocalDateTime.now().plusDays(2));
-        futureEvent.setTotalTickets(20);
-        futureEvent.setTicketPrice(15.0);
-        eventRepository.save(futureEvent);
-
-        mockMvc.perform(get("/api/events")
-                        .param("search", "Meetup")
-                        .param("upcoming", "true")
-                        .param("page", "0")
-                        .param("size", "1")
-                        .param("sortBy", "eventDate")
-                        .param("sortDir", "asc"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].title").value("Future Meetup"))
-                .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.page").value(0))
-                .andExpect(jsonPath("$.size").value(1));
-    }
-
-    @Test
-    void bookingValidationFailuresAreControlled() throws Exception {
-        Event event = new Event();
-        event.setTitle("Small Event");
-        event.setDescription("Small");
-        event.setLocation("HCMC");
-        event.setEventDate(LocalDateTime.now().plusDays(5));
-        event.setTotalTickets(1);
-        event.setTicketPrice(12.0);
-        Event savedEvent = eventRepository.save(event);
-        String token = registerAndToken("ivy");
-
-        mockMvc.perform(post("/api/bookings")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("eventId", savedEvent.getId()))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.quantity").value(1))
-                .andExpect(jsonPath("$.totalPrice").value(12.0));
-
-        mockMvc.perform(post("/api/bookings")
+        mockMvc.perform(post("/api/payments")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
-                                "eventId", savedEvent.getId(),
-                                "quantity", 0
+                                "bookingId", bookingId,
+                                "method", "CREDIT_CARD"
                         ))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Quantity must be at least 1"));
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("BOOKING_ALREADY_PAID"));
 
-        mockMvc.perform(post("/api/bookings")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of(
-                                "eventId", 999999L,
-                                "quantity", 1
-                        ))))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Event not found"));
-
-        mockMvc.perform(post("/api/bookings")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of(
-                                "eventId", savedEvent.getId(),
-                                "quantity", 2
-                        ))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Not enough tickets available"));
-    }
-
-    @Test
-    void userCanViewProfileAndToggleFavorites() throws Exception {
-        Event event = new Event();
-        event.setTitle("Favorite Conference");
-        event.setDescription("Favorite");
-        event.setLocation("Da Nang");
-        event.setEventDate(LocalDateTime.now().plusDays(4));
-        event.setTotalTickets(10);
-        event.setTicketPrice(30.0);
-        Event savedEvent = eventRepository.save(event);
-        String token = registerAndToken("erin");
+        mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].ticketCode").value(ticketCode))
+                .andExpect(jsonPath("$.data.content[0].eventTitle").value("Conference"))
+                .andExpect(jsonPath("$.data.content[0].status").value("PAID"));
 
         mockMvc.perform(get("/api/users/profile")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.username").value("erin"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.fullName").value("Carol Tran"))
+                .andExpect(jsonPath("$.data.email").value("carol@example.com"));
 
         mockMvc.perform(put("/api/users/profile")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
-                                "fullName", "Erin Nguyen",
-                                "avatar", "https://example.com/erin.png"
+                                "fullName", "Carol Updated",
+                                "avatar", "https://example.com/carol.png"
                         ))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.fullName").value("Erin Nguyen"))
-                .andExpect(jsonPath("$.avatar").value("https://example.com/erin.png"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.fullName").value("Carol Updated"));
 
         mockMvc.perform(put("/api/users/reminders")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("eventReminder", true))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.eventReminder").value(true));
-
-        mockMvc.perform(get("/api/favorites")
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isEmpty());
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.eventReminder").value(true));
 
         mockMvc.perform(post("/api/favorites/" + savedEvent.getId())
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.eventId").value(savedEvent.getId()))
-                .andExpect(jsonPath("$.favorited").value(true));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.eventId").value(savedEvent.getId()))
+                .andExpect(jsonPath("$.data.favorited").value(true));
 
         mockMvc.perform(get("/api/favorites")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].eventTitle").value("Favorite Conference"));
-
-        mockMvc.perform(post("/api/favorites/" + savedEvent.getId())
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.favorited").value(false));
-
-        mockMvc.perform(get("/api/favorites")
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isEmpty());
-
-        mockMvc.perform(post("/api/favorites/999999")
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Event not found"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].eventTitle").value("Conference"));
     }
 
     @Test
-    void userCanCancelOnlyOwnPendingBooking() throws Exception {
-        Event event = new Event();
-        event.setTitle("Cancelable Event");
-        event.setDescription("Cancelable");
-        event.setLocation("HCMC");
-        event.setEventDate(LocalDateTime.now().plusDays(8));
-        event.setTotalTickets(10);
-        event.setTicketPrice(20.0);
-        Event savedEvent = eventRepository.save(event);
+    void adminEventCrudUsesEnvelopeIncludingDelete() throws Exception {
+        String adminToken = createAdminAndLogin();
 
-        String ownerToken = registerAndToken("frank");
-        String otherToken = registerAndToken("grace");
-        Long bookingId = createBooking(ownerToken, savedEvent.getId(), 1);
+        String createdJson = mockMvc.perform(post("/api/events")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(eventRequest("Admin Event", LocalDateTime.now().plusDays(5), 100)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.title").value("Admin Event"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Long eventId = objectMapper.readTree(createdJson).at("/data/id").asLong();
 
-        mockMvc.perform(post("/api/bookings/" + bookingId + "/cancel")
-                        .header("Authorization", "Bearer " + otherToken))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Booking not found"));
-
-        mockMvc.perform(post("/api/bookings/" + bookingId + "/cancel")
-                        .header("Authorization", "Bearer " + ownerToken))
+        mockMvc.perform(put("/api/events/" + eventId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(eventRequest("Updated Admin Event", LocalDateTime.now().plusDays(6), 80)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("CANCELLED"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.title").value("Updated Admin Event"));
+
+        mockMvc.perform(delete("/api/events/" + eventId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").isString());
     }
 
     @Test
-    void paidBookingCannotBeCancelled() throws Exception {
-        Event event = new Event();
-        event.setTitle("Paid Event");
-        event.setDescription("Paid");
-        event.setLocation("HCMC");
-        event.setEventDate(LocalDateTime.now().plusDays(9));
-        event.setTotalTickets(10);
-        event.setTicketPrice(20.0);
-        Event savedEvent = eventRepository.save(event);
+    void bookingRejectsSoldOutWithConflictCode() throws Exception {
+        Event savedEvent = saveEvent("Small Event", 1, 12.0);
+        String token = registerAndToken("Ivy Le", "ivy@example.com");
 
-        String token = registerAndToken("henry");
-        Long bookingId = createBooking(token, savedEvent.getId(), 1);
-        mockMvc.perform(post("/api/payments")
+        createBooking(token, savedEvent.getId(), 1);
+
+        mockMvc.perform(post("/api/bookings")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("bookingId", bookingId))))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(post("/api/bookings/" + bookingId + "/cancel")
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Only pending bookings can be cancelled"));
+                        .content(json(Map.of(
+                                "eventId", savedEvent.getId(),
+                                "quantity", 1
+                        ))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("EVENT_SOLD_OUT"));
     }
 
     @Test
-    void paymentRejectsOtherUsersCancelledAndAlreadyPaidBookings() throws Exception {
-        Event event = new Event();
-        event.setTitle("Payment Rules Event");
-        event.setDescription("Payment rules");
-        event.setLocation("HCMC");
-        event.setEventDate(LocalDateTime.now().plusDays(10));
-        event.setTotalTickets(10);
-        event.setTicketPrice(20.0);
-        Event savedEvent = eventRepository.save(event);
+    void onlyOneConcurrentBookingSucceedsWhenOneTicketLeft() throws Exception {
+        Event savedEvent = saveEvent("Hot Event", 1, 99.0);
+        String firstToken = registerAndToken("First Buyer", "first@example.com");
+        String secondToken = registerAndToken("Second Buyer", "second@example.com");
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        executor = Executors.newFixedThreadPool(2);
 
-        String ownerToken = registerAndToken("jack");
-        String otherToken = registerAndToken("kate");
-        Long bookingId = createBooking(ownerToken, savedEvent.getId(), 1);
+        Future<Integer> first = executor.submit(() -> bookWhenReleased(firstToken, savedEvent.getId(), ready, start));
+        Future<Integer> second = executor.submit(() -> bookWhenReleased(secondToken, savedEvent.getId(), ready, start));
 
-        mockMvc.perform(post("/api/payments")
-                        .header("Authorization", "Bearer " + otherToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("bookingId", bookingId))))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Booking not found"));
+        assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+        start.countDown();
 
-        mockMvc.perform(post("/api/payments")
-                        .header("Authorization", "Bearer " + ownerToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("bookingId", bookingId))))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(post("/api/payments")
-                        .header("Authorization", "Bearer " + ownerToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("bookingId", bookingId))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Booking is already paid"));
-
-        Long cancelledBookingId = createBooking(ownerToken, savedEvent.getId(), 1);
-        mockMvc.perform(post("/api/bookings/" + cancelledBookingId + "/cancel")
-                        .header("Authorization", "Bearer " + ownerToken))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(post("/api/payments")
-                        .header("Authorization", "Bearer " + ownerToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("bookingId", cancelledBookingId))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Cancelled bookings cannot be paid"));
+        List<Integer> statuses = List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS));
+        assertThat(statuses).containsExactlyInAnyOrder(201, 409);
+        assertThat(bookingRepository.sumBookedQuantityByEventId(savedEvent.getId())).isEqualTo(1L);
     }
 
-    private String registerAndToken(String username) throws Exception {
+    private int bookWhenReleased(String token, Long eventId, CountDownLatch ready, CountDownLatch start) throws Exception {
+        ready.countDown();
+        assertThat(start.await(5, TimeUnit.SECONDS)).isTrue();
+        return mockMvc.perform(post("/api/bookings")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "eventId", eventId,
+                                "quantity", 1
+                        ))))
+                .andReturn()
+                .getResponse()
+                .getStatus();
+    }
+
+    private String registerAndToken(String fullName, String email) throws Exception {
         String authJson = mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
-                                "username", username,
-                                "password", "password123",
-                                "email", username + "@example.com"
+                                "fullName", fullName,
+                                "email", email,
+                                "password", "password123"
                         ))))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
         JsonNode auth = objectMapper.readTree(authJson);
-        return auth.get("token").asText();
+        return auth.at("/data/accessToken").asText();
     }
 
-    private String loginAndToken(String username, String password) throws Exception {
+    private String loginAndToken(String email, String password) throws Exception {
         String authJson = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
-                                "username", username,
+                                "email", email,
                                 "password", password
                         ))))
                 .andExpect(status().isOk())
@@ -471,7 +390,22 @@ class EventBookingFlowTests {
                 .getResponse()
                 .getContentAsString();
         JsonNode auth = objectMapper.readTree(authJson);
-        return auth.get("token").asText();
+        return auth.at("/data/accessToken").asText();
+    }
+
+    private String createAdminAndLogin() throws Exception {
+        Role userRole = roleRepository.findByName("USER")
+                .orElseGet(() -> roleRepository.save(new Role(null, "USER")));
+        Role adminRole = roleRepository.findByName("ADMIN")
+                .orElseGet(() -> roleRepository.save(new Role(null, "ADMIN")));
+        User admin = new User();
+        admin.setUsername("admin@example.com");
+        admin.setFullName("Admin User");
+        admin.setEmail("admin@example.com");
+        admin.setPassword(passwordEncoder.encode("admin123"));
+        admin.setRoles(new HashSet<>(Set.of(userRole, adminRole)));
+        userRepository.save(admin);
+        return loginAndToken("admin@example.com", "admin123");
     }
 
     private Long createBooking(String token, Long eventId, int quantity) throws Exception {
@@ -482,21 +416,34 @@ class EventBookingFlowTests {
                                 "eventId", eventId,
                                 "quantity", quantity
                         ))))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.bookingId").isNumber())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        return objectMapper.readTree(bookingJson).get("bookingId").asLong();
+        return objectMapper.readTree(bookingJson).at("/data/bookingId").asLong();
     }
 
-    private String eventRequest(String title, LocalDateTime eventDate) throws Exception {
+    private Event saveEvent(String title, int totalTickets, double price) {
+        Event event = new Event();
+        event.setTitle(title);
+        event.setDescription(title + " description");
+        event.setLocation("HCMC");
+        event.setEventDate(LocalDateTime.now().plusDays(7));
+        event.setTotalTickets(totalTickets);
+        event.setTicketPrice(price);
+        return eventRepository.save(event);
+    }
+
+    private String eventRequest(String title, LocalDateTime eventDate, int totalTickets) throws Exception {
         return json(Map.of(
                 "title", title,
                 "description", title + " description",
                 "eventDate", eventDate.toString(),
                 "location", "HCMC",
                 "price", 25.0,
-                "totalTickets", 100
+                "totalTickets", totalTickets
         ));
     }
 
