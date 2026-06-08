@@ -1,236 +1,89 @@
 # PRD - Event Booking App
 
-## 1. Tổng quan sản phẩm
+## 1. Business Context và phạm vi sản phẩm
 
-Event Booking App là nền tảng giúp người dùng tìm kiếm sự kiện, xem thông tin chi tiết, đặt vé, thanh toán và quản lý vé đã mua. Hệ thống cũng hỗ trợ admin quản lý danh sách sự kiện và cung cấp các chức năng tài khoản như hồ sơ cá nhân, nhắc lịch sự kiện và xác thực bằng JWT.
+### Problem statement
 
-Tài liệu này được xây dựng dựa trên:
+Người dùng muốn tìm sự kiện phù hợp, kiểm tra thông tin nhanh và mua vé mà không phải trao đổi thủ công qua tin nhắn, chuyển khoản riêng lẻ hoặc chờ xác nhận từ ban tổ chức. Ở phía vận hành, admin cần một nơi tập trung để đăng sự kiện, theo dõi booking và kiểm soát trạng thái vé thay vì quản lý bằng spreadsheet rời rạc.
 
-- File API Spec: `Event Booking App_API Specs_V1.0.pdf`.
-- Codebase hiện tại tại `C:\Event_Booking_App\Event-Booking-App`.
-- Hiện trạng backend Spring Boot trong repo.
+Event Booking App giải quyết bài toán này bằng một luồng self-service: khám phá sự kiện, đặt vé, thanh toán, nhận vé và quản lý hồ sơ trong cùng một hệ thống.
 
-### Mục tiêu
+### Target users và personas
 
-- Cung cấp tài liệu sản phẩm thống nhất cho backend, frontend và các bước phát triển tiếp theo.
-- Mô tả rõ các chức năng cốt lõi của ứng dụng đặt vé sự kiện.
-- Bổ sung định hướng frontend React để triển khai giao diện người dùng.
-- Ghi nhận các khoảng cách giữa API spec mục tiêu và codebase hiện tại.
-- Gợi ý các chức năng mở rộng có thể thêm sau MVP.
+| Persona | Nhu cầu chính | Pain point hiện tại | Tiêu chí thành công |
+| --- | --- | --- | --- |
+| Guest visitor | Tìm sự kiện công khai, xem giá và địa điểm trước khi đăng nhập. | Thiếu thông tin tập trung, phải hỏi ban tổ chức. | Tìm được sự kiện liên quan trong dưới 2 phút. |
+| Registered attendee | Đặt vé, thanh toán và xem lại vé của mình. | Dễ mất mã vé, không rõ booking đã thanh toán hay chưa. | Hoàn tất booking-payment-ticket trong một phiên. |
+| Event admin | Tạo, cập nhật, xoá sự kiện và chuẩn bị dữ liệu bán vé. | Quản lý thủ công, khó kiểm tra vé còn lại. | Đăng sự kiện mới trong dưới 5 phút. |
+| Future staff/check-in user | Kiểm tra vé tại cổng. | Vé chưa có trạng thái check-in/QR. | Xác thực vé nhanh, tránh dùng lại vé. |
 
-### Phạm vi MVP
+### Product goals
 
-MVP tập trung vào các luồng chính:
+- Cung cấp backend API rõ contract để frontend React tích hợp không bị lệch.
+- Hỗ trợ luồng MVP end-to-end: register/login, browse events, booking, payment mock, tickets, profile/reminders và admin event management.
+- Thiết kế data model đủ đường mở rộng cho event images, nearby events, ticket tier/seat map, QR check-in và payment gateway thật.
+- Giảm rủi ro oversell vé bằng chiến lược locking/inventory trước khi chạy sự kiện có lưu lượng cao.
 
-- Đăng ký và đăng nhập người dùng.
+### Success metrics
+
+| Nhóm KPI | Metric MVP | Mục tiêu ban đầu |
+| --- | --- | --- |
+| Acquisition | Số user đăng ký mới mỗi tuần | Theo dõi baseline sau khi có frontend |
+| Activation | Tỷ lệ registered user tạo booking đầu tiên | >= 25% user đăng ký |
+| Conversion | Tỷ lệ event detail -> booking created | >= 10% |
+| Payment | Tỷ lệ booking PENDING -> PAID | >= 80% với payment mock, >= 95% payment request hợp lệ |
+| Reliability | API error rate không tính lỗi validation/user input | < 1% request |
+| Admin efficiency | Thời gian tạo event mới | < 5 phút |
+| Engagement | DAU/WAU, số lượt xem event/user | Theo dõi sau khi frontend ra MVP |
+
+### MVP scope
+
+MVP bao gồm:
+
+- Đăng ký, đăng nhập, JWT authentication.
 - Xem danh sách và chi tiết sự kiện.
-- Đặt vé cho sự kiện.
-- Thanh toán booking.
-- Xem vé/booking của người dùng.
-- Cập nhật hồ sơ và cài đặt nhắc nhở.
 - Admin tạo, sửa, xoá sự kiện.
+- Người dùng đặt vé, xem booking, thanh toán mock và xem ticket.
+- Cập nhật hồ sơ cá nhân và bật/tắt reminder setting.
+- API contract đủ rõ để frontend React triển khai.
 
-## 2. Người dùng và vai trò
+Ngoài MVP nhưng đã định hướng:
 
-### Khách chưa đăng nhập
+- Favorite/wishlist events.
+- Cancel booking/refund.
+- QR ticket check-in.
+- Email/push reminder thật.
+- Nearby events bằng GPS.
+- Ticket tier/seat map.
+- Payment gateway thật.
 
-- Xem danh sách sự kiện công khai.
-- Xem chi tiết sự kiện.
-- Đăng ký tài khoản.
-- Đăng nhập.
+## 2. Quyết định product quan trọng
 
-### Người dùng đã đăng nhập
+### Authentication contract
 
-- Xem danh sách và chi tiết sự kiện.
-- Đặt vé sự kiện.
-- Thanh toán booking.
-- Xem danh sách vé/booking của mình.
-- Cập nhật hồ sơ cá nhân.
-- Bật/tắt nhắc nhở sự kiện.
+Quyết định: **MVP public contract dùng email-first authentication**.
 
-### Admin
+Frontend và API spec sẽ dùng:
 
-- Quản lý sự kiện.
-- Tạo sự kiện mới.
-- Cập nhật thông tin sự kiện.
-- Xoá sự kiện.
-- Theo dõi dữ liệu sự kiện và booking trong các giai đoạn mở rộng.
+- Register: `fullName`, `email`, `password`.
+- Login: `email`, `password`.
+- Response auth: `accessToken`, `expiresAt`, `user`.
+- `username` không còn là input bắt buộc của frontend. Nếu backend vẫn cần `username` tạm thời, backend có thể map nội bộ từ email hoặc migrate schema/service trong Phase 1.
 
-## 3. Luồng nghiệp vụ chính
+Lý do:
 
-### Đăng ký
+- Email là định danh tự nhiên cho người dùng cuối.
+- Tránh ambiguity giữa API spec, frontend form và backend DTO hiện tại.
+- Dễ mở rộng sang forgot password, email verification và social login.
 
-Người dùng tạo tài khoản bằng họ tên, email và mật khẩu. Hệ thống cần validate email, kiểm tra email không trùng, kiểm tra mật khẩu đạt yêu cầu tối thiểu, sau đó lưu mật khẩu dạng BCrypt.
+Tác động kỹ thuật:
 
-Target API:
+- Backend hiện tại đang dùng `username/password`; cần migrate DTO, service, repository lookup và tests sang email-first.
+- JWT subject nên dùng user id hoặc email ổn định. Với MVP, dùng email là chấp nhận được; production nên cân nhắc user id để tránh ảnh hưởng khi đổi email.
 
-- `POST /api/auth/register`
+### Response contract
 
-Request mục tiêu:
-
-```json
-{
-  "fullName": "Jane Doe",
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-
-Response thành công trả về thông tin người dùng đã tạo.
-
-### Đăng nhập
-
-Người dùng đăng nhập bằng email và mật khẩu. Hệ thống trả về JWT access token và thời điểm hết hạn.
-
-Target API:
-
-- `POST /api/auth/login`
-
-Request mục tiêu:
-
-```json
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
-```
-
-Response thành công trả về `accessToken` và `expire`.
-
-### Xem danh sách sự kiện
-
-Người dùng xem danh sách sự kiện theo các kiểu lọc:
-
-- `popular`: sự kiện phổ biến dựa trên số lượng booking.
-- `upcoming`: sự kiện sắp diễn ra.
-- `nearby`: sự kiện gần vị trí người dùng.
-
-Target API:
-
-- `GET /api/events`
-
-Query params:
-
-- `type`: `popular`, `upcoming`, `nearby`.
-- `search`: từ khoá tìm kiếm.
-- `page`: trang hiện tại, mặc định 1.
-- `size`: số lượng item mỗi trang, mặc định 10.
-
-### Xem chi tiết sự kiện
-
-Người dùng xem thông tin chi tiết của một sự kiện, gồm tên, thời gian, địa điểm, giá, mô tả và ảnh.
-
-Target API:
-
-- `GET /api/events/{id}`
-
-### Quản lý sự kiện cho admin
-
-Admin có quyền tạo, cập nhật và xoá sự kiện. Các endpoint này yêu cầu JWT hợp lệ và role `ADMIN`.
-
-Target API:
-
-- `POST /api/events`
-- `PUT /api/events/{id}`
-- `DELETE /api/events/{id}`
-
-Thông tin sự kiện mục tiêu:
-
-```json
-{
-  "title": "Art Exhibition",
-  "dateTime": "2025-05-12T10:00:00",
-  "location": "Modern Art Gallery, New York",
-  "price": 25.0,
-  "description": "Lorem ipsum dolor sit amet...",
-  "imageUrl": "https://cdn.example.com/events/art_exhibition.jpg"
-}
-```
-
-### Đặt vé
-
-Người dùng đăng nhập chọn sự kiện và số lượng vé. Hệ thống kiểm tra sự kiện tồn tại, số lượng hợp lệ, tính tổng tiền và tạo booking trạng thái `PENDING`.
-
-Target API:
-
-- `POST /api/bookings`
-
-Request:
-
-```json
-{
-  "eventId": 101,
-  "quantity": 2
-}
-```
-
-### Xem vé của tôi
-
-Người dùng xem danh sách vé/booking đã mua của mình.
-
-Target API:
-
-- `GET /api/tickets`
-
-Dữ liệu trả về gồm mã vé, thông tin sự kiện, số lượng và trạng thái thanh toán.
-
-### Thanh toán
-
-Người dùng thanh toán cho một booking chưa thanh toán. Hệ thống validate booking, thông tin thẻ và cập nhật trạng thái thanh toán.
-
-Target API:
-
-- `POST /api/payments`
-
-Request mục tiêu:
-
-```json
-{
-  "bookingId": 501,
-  "cardNumber": "1234 5678 9012 3456",
-  "expiry": "12/25",
-  "cvv": "123"
-}
-```
-
-### Cài đặt nhắc nhở
-
-Người dùng bật hoặc tắt nhắc nhở sự kiện.
-
-Target API:
-
-- `PUT /api/users/reminders`
-
-Request:
-
-```json
-{
-  "eventReminder": true
-}
-```
-
-### Hồ sơ cá nhân
-
-Người dùng cập nhật họ tên và avatar.
-
-Target API:
-
-- `PUT /api/users/profile`
-
-Request:
-
-```json
-{
-  "fullName": "Jane Doe",
-  "avatar": "https://cdn.example.com/avatars/user123.jpg"
-}
-```
-
-## 4. API và chuẩn response
-
-### Response thành công
-
-Các API target nên dùng cấu trúc response thống nhất:
+Quyết định: **Success response nên dùng envelope thống nhất** để frontend xử lý đều.
 
 ```json
 {
@@ -240,11 +93,12 @@ Các API target nên dùng cấu trúc response thống nhất:
 }
 ```
 
-### Response validation lỗi
+Lỗi dùng cùng shape:
 
 ```json
 {
   "success": false,
+  "code": "VALIDATION_ERROR",
   "message": "Validation failed",
   "errors": [
     {
@@ -255,367 +109,923 @@ Các API target nên dùng cấu trúc response thống nhất:
 }
 ```
 
-### Response bảo mật
+Trong Phase 1 có thể giữ DTO trực tiếp nếu cần chạy nhanh, nhưng Phase 2 phải chuẩn hoá envelope trước khi frontend đóng contract.
 
-Các endpoint ngoài `/api/auth/login` và `/api/auth/register` yêu cầu header:
+## 3. Người dùng và vai trò
 
-```http
-Authorization: Bearer <token>
+### Guest
+
+- Xem danh sách sự kiện công khai.
+- Xem chi tiết sự kiện.
+- Tìm kiếm/lọc sự kiện.
+- Đăng ký hoặc đăng nhập.
+
+### Authenticated user
+
+- Xem danh sách và chi tiết sự kiện.
+- Tạo booking.
+- Thanh toán booking.
+- Xem booking/ticket của mình.
+- Huỷ booking còn `PENDING`.
+- Cập nhật hồ sơ cá nhân.
+- Bật/tắt reminder setting.
+- Lưu favorite event nếu backend extension được bật.
+
+### Admin
+
+- Tạo, cập nhật, xoá sự kiện.
+- Xem dữ liệu event và booking ở các phase mở rộng.
+- Không được seed admin mặc định trong production.
+
+## 4. Luồng nghiệp vụ chính
+
+### Register
+
+Người dùng tạo tài khoản bằng full name, email và password. Hệ thống validate email, kiểm tra email unique, kiểm tra password tối thiểu và lưu password bằng BCrypt.
+
+### Login
+
+Người dùng đăng nhập bằng email/password. Hệ thống trả JWT access token, thời điểm hết hạn và thông tin user tối thiểu.
+
+### Browse events
+
+Guest hoặc user xem event list với search, pagination và filter. Filter mục tiêu gồm:
+
+- `popular`: sort theo số booking/ticket sold.
+- `upcoming`: sự kiện có thời gian trong tương lai.
+- `nearby`: cần `latitude`, `longitude` và vị trí người dùng.
+
+### Event detail
+
+Hiển thị title, date/time, location, price, available tickets, description, image và metadata cần thiết để tạo booking.
+
+### Admin event management
+
+Admin tạo, cập nhật, xoá event. Các endpoint này yêu cầu JWT hợp lệ và role `ADMIN`.
+
+### Booking
+
+User chọn event và quantity. Backend kiểm tra event tồn tại, quantity hợp lệ, vé còn đủ, tính total price và tạo booking trạng thái `PENDING`.
+
+### Payment
+
+User thanh toán một booking của chính mình. MVP dùng payment mock, không lưu raw card data. Booking hợp lệ được chuyển sang `PAID`, tạo payment record và ticket code.
+
+### Tickets and bookings
+
+User xem booking và ticket của mình. Ticket trả về event info, quantity, status và ticket code.
+
+### Profile and reminders
+
+User cập nhật full name, avatar URL và bật/tắt reminder setting.
+
+## 5. API contract chi tiết
+
+### API conventions
+
+- Base path: `/api`.
+- Content type: `application/json`.
+- Protected endpoints yêu cầu `Authorization: Bearer <accessToken>`.
+- Pagination dùng zero-based `page` để phù hợp Spring Data; frontend có thể hiển thị page one-based.
+- Timestamp dùng ISO-8601, ví dụ `2026-06-08T19:00:00Z`.
+- Money dùng decimal number trong MVP; production nên dùng integer minor unit hoặc `BigDecimal`.
+
+### Common HTTP status
+
+| Status | Khi dùng | Response code |
+| --- | --- | --- |
+| 200 OK | Read/update/payment thành công | Tuỳ endpoint |
+| 201 Created | Tạo user, event, booking thành công | Tuỳ endpoint |
+| 204 No Content | Delete thành công | N/A |
+| 400 Bad Request | Request đúng schema nhưng vi phạm business rule | `BUSINESS_RULE_VIOLATION` |
+| 401 Unauthorized | Thiếu token, token sai, token hết hạn, login sai | `UNAUTHENTICATED` |
+| 403 Forbidden | User không có quyền | `FORBIDDEN` |
+| 404 Not Found | Resource không tồn tại hoặc không thuộc user hiện tại | `RESOURCE_NOT_FOUND` |
+| 409 Conflict | Email đã tồn tại, hết vé, booking đã paid | `EMAIL_ALREADY_EXISTS`, `EVENT_SOLD_OUT`, `BOOKING_ALREADY_PAID` |
+| 422 Unprocessable Entity | Validation field-level | `VALIDATION_ERROR` |
+| 500 Internal Server Error | Lỗi hệ thống chưa xử lý | `INTERNAL_ERROR` |
+
+### Error code catalog
+
+| Code | Message đề xuất | Ghi chú |
+| --- | --- | --- |
+| `VALIDATION_ERROR` | Validation failed | Kèm `errors[]`. |
+| `EMAIL_ALREADY_EXISTS` | Email already exists | Register conflict. |
+| `INVALID_CREDENTIALS` | Invalid email or password | Không tiết lộ email có tồn tại hay không. |
+| `UNAUTHENTICATED` | Unauthorized | Token missing/invalid/expired. |
+| `FORBIDDEN` | Forbidden | Role không đủ quyền. |
+| `RESOURCE_NOT_FOUND` | Resource not found | Dùng cả khi user truy cập resource không thuộc mình. |
+| `EVENT_SOLD_OUT` | Not enough tickets available | Nên trả 409. |
+| `BOOKING_NOT_PAYABLE` | Booking cannot be paid | Booking cancelled/not owned/not pending. |
+| `BOOKING_ALREADY_PAID` | Booking is already paid | Idempotency cần thiết ở phase gateway thật. |
+| `BOOKING_NOT_CANCELLABLE` | Only pending bookings can be cancelled | Cancel rule. |
+| `PAYMENT_DECLINED` | Payment was declined | Dành cho gateway thật. |
+| `RATE_LIMITED` | Too many requests | Khi bật rate limiting. |
+
+### Endpoint detail
+
+#### POST `/api/auth/register`
+
+Request:
+
+```json
+{
+  "fullName": "Jane Doe",
+  "email": "jane@example.com",
+  "password": "password123"
+}
 ```
 
-Các lỗi bảo mật cần chuẩn hoá:
+Success `201 Created`:
 
-- `401 Unauthorized`: chưa đăng nhập, token thiếu, token sai hoặc token hết hạn.
-- `403 Forbidden`: người dùng không đủ quyền.
+```json
+{
+  "success": true,
+  "message": "Registered successfully",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "expiresAt": "2026-06-09T12:00:00Z",
+    "user": {
+      "id": 12,
+      "fullName": "Jane Doe",
+      "email": "jane@example.com",
+      "avatar": null,
+      "role": "USER"
+    }
+  }
+}
+```
 
-## 5. Data model mục tiêu
+Errors: `409 EMAIL_ALREADY_EXISTS`, `422 VALIDATION_ERROR`.
+
+#### POST `/api/auth/login`
+
+Request:
+
+```json
+{
+  "email": "jane@example.com",
+  "password": "password123"
+}
+```
+
+Success `200 OK`:
+
+```json
+{
+  "success": true,
+  "message": "Logged in successfully",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "expiresAt": "2026-06-09T12:00:00Z",
+    "user": {
+      "id": 12,
+      "fullName": "Jane Doe",
+      "email": "jane@example.com",
+      "avatar": "https://cdn.example.com/avatars/jane.png",
+      "role": "USER"
+    }
+  }
+}
+```
+
+Errors: `401 INVALID_CREDENTIALS`, `422 VALIDATION_ERROR`.
+
+#### GET `/api/events`
+
+Query params:
+
+| Param | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `type` | string | No | `upcoming` | `popular`, `upcoming`, `nearby`, `all`. |
+| `search` | string | No | null | Search title/location/description. |
+| `page` | integer | No | 0 | Zero-based. |
+| `size` | integer | No | 10 | Max 100. |
+| `sortBy` | string | No | `dateTime` | Whitelist field. |
+| `sortDir` | string | No | `asc` | `asc` or `desc`. |
+| `latitude` | number | Required if `nearby` | null | User latitude. |
+| `longitude` | number | Required if `nearby` | null | User longitude. |
+
+Success `200 OK`:
+
+```json
+{
+  "success": true,
+  "message": "Events retrieved successfully",
+  "data": {
+    "content": [
+      {
+        "id": 101,
+        "title": "Art Exhibition",
+        "dateTime": "2026-07-12T10:00:00Z",
+        "location": "Modern Art Gallery, New York",
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "price": 25.0,
+        "description": "Contemporary art showcase",
+        "imageUrl": "https://cdn.example.com/events/art.jpg",
+        "availableTickets": 80,
+        "popularScore": 245
+      }
+    ],
+    "page": 0,
+    "size": 10,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+Errors: `422 VALIDATION_ERROR`.
+
+#### GET `/api/events/{id}`
+
+Success `200 OK`:
+
+```json
+{
+  "success": true,
+  "message": "Event retrieved successfully",
+  "data": {
+    "id": 101,
+    "title": "Art Exhibition",
+    "dateTime": "2026-07-12T10:00:00Z",
+    "location": "Modern Art Gallery, New York",
+    "latitude": 40.7128,
+    "longitude": -74.006,
+    "price": 25.0,
+    "description": "Contemporary art showcase",
+    "imageUrl": "https://cdn.example.com/events/art.jpg",
+    "availableTickets": 80
+  }
+}
+```
+
+Errors: `404 RESOURCE_NOT_FOUND`.
+
+#### POST `/api/events`
+
+Role: `ADMIN`.
+
+Request:
+
+```json
+{
+  "title": "Art Exhibition",
+  "dateTime": "2026-07-12T10:00:00Z",
+  "location": "Modern Art Gallery, New York",
+  "latitude": 40.7128,
+  "longitude": -74.006,
+  "price": 25.0,
+  "totalTickets": 100,
+  "description": "Contemporary art showcase",
+  "imageUrl": "https://cdn.example.com/events/art.jpg"
+}
+```
+
+Success `201 Created`: returns event response.
+
+Errors: `401 UNAUTHENTICATED`, `403 FORBIDDEN`, `422 VALIDATION_ERROR`.
+
+#### PUT `/api/events/{id}`
+
+Role: `ADMIN`.
+
+Request body giống `POST /api/events`.
+
+Success `200 OK`: returns event response.
+
+Errors: `401 UNAUTHENTICATED`, `403 FORBIDDEN`, `404 RESOURCE_NOT_FOUND`, `422 VALIDATION_ERROR`.
+
+#### DELETE `/api/events/{id}`
+
+Role: `ADMIN`.
+
+Success `204 No Content`.
+
+Errors: `401 UNAUTHENTICATED`, `403 FORBIDDEN`, `404 RESOURCE_NOT_FOUND`, `409 BUSINESS_RULE_VIOLATION` nếu event đã có paid booking và policy không cho xoá.
+
+#### POST `/api/bookings`
+
+Role: `USER`.
+
+Request:
+
+```json
+{
+  "eventId": 101,
+  "quantity": 2
+}
+```
+
+Success `201 Created`:
+
+```json
+{
+  "success": true,
+  "message": "Booking created successfully",
+  "data": {
+    "bookingId": 501,
+    "eventId": 101,
+    "eventTitle": "Art Exhibition",
+    "quantity": 2,
+    "unitPrice": 25.0,
+    "totalPrice": 50.0,
+    "status": "PENDING",
+    "createdAt": "2026-06-08T12:30:00Z"
+  }
+}
+```
+
+Errors: `401 UNAUTHENTICATED`, `404 RESOURCE_NOT_FOUND`, `409 EVENT_SOLD_OUT`, `422 VALIDATION_ERROR`.
+
+#### GET `/api/bookings/my`
+
+Role: `USER`.
+
+Success `200 OK`:
+
+```json
+{
+  "success": true,
+  "message": "Bookings retrieved successfully",
+  "data": [
+    {
+      "bookingId": 501,
+      "eventId": 101,
+      "eventTitle": "Art Exhibition",
+      "quantity": 2,
+      "totalPrice": 50.0,
+      "status": "PENDING",
+      "createdAt": "2026-06-08T12:30:00Z"
+    }
+  ]
+}
+```
+
+Errors: `401 UNAUTHENTICATED`.
+
+#### POST `/api/bookings/{id}/cancel`
+
+Role: `USER`.
+
+Success `200 OK`:
+
+```json
+{
+  "success": true,
+  "message": "Booking cancelled successfully",
+  "data": {
+    "bookingId": 501,
+    "status": "CANCELLED"
+  }
+}
+```
+
+Errors: `401 UNAUTHENTICATED`, `404 RESOURCE_NOT_FOUND`, `409 BOOKING_NOT_CANCELLABLE`.
+
+#### POST `/api/payments`
+
+Role: `USER`.
+
+Request:
+
+```json
+{
+  "bookingId": 501,
+  "cardNumber": "4242 4242 4242 4242",
+  "expiry": "12/28",
+  "cvv": "123",
+  "method": "MOCK_CARD"
+}
+```
+
+Success `200 OK`:
+
+```json
+{
+  "success": true,
+  "message": "Payment completed successfully",
+  "data": {
+    "paymentId": 9001,
+    "bookingId": 501,
+    "amount": 50.0,
+    "status": "PAID",
+    "ticketCode": "TICKET-A1B2C3D4"
+  }
+}
+```
+
+Errors: `401 UNAUTHENTICATED`, `404 RESOURCE_NOT_FOUND`, `409 BOOKING_ALREADY_PAID`, `409 BOOKING_NOT_PAYABLE`, `422 VALIDATION_ERROR`, `402 PAYMENT_DECLINED` khi có gateway thật.
+
+#### GET `/api/tickets`
+
+Role: `USER`.
+
+Success `200 OK`:
+
+```json
+{
+  "success": true,
+  "message": "Tickets retrieved successfully",
+  "data": [
+    {
+      "ticketId": 7001,
+      "ticketCode": "TICKET-A1B2C3D4",
+      "ticketType": "GENERAL",
+      "seatNumber": null,
+      "eventId": 101,
+      "eventTitle": "Art Exhibition",
+      "dateTime": "2026-07-12T10:00:00Z",
+      "location": "Modern Art Gallery, New York",
+      "quantity": 2,
+      "status": "PAID"
+    }
+  ]
+}
+```
+
+Errors: `401 UNAUTHENTICATED`.
+
+#### GET `/api/users/profile`
+
+Role: `USER`.
+
+Success `200 OK`:
+
+```json
+{
+  "success": true,
+  "message": "Profile retrieved successfully",
+  "data": {
+    "id": 12,
+    "fullName": "Jane Doe",
+    "email": "jane@example.com",
+    "avatar": "https://cdn.example.com/avatars/jane.png",
+    "role": "USER"
+  }
+}
+```
+
+#### PUT `/api/users/profile`
+
+Role: `USER`.
+
+Request:
+
+```json
+{
+  "fullName": "Jane Nguyen",
+  "avatar": "https://cdn.example.com/avatars/jane-new.png"
+}
+```
+
+Success `200 OK`: returns profile response.
+
+Errors: `401 UNAUTHENTICATED`, `422 VALIDATION_ERROR`.
+
+#### PUT `/api/users/reminders`
+
+Role: `USER`.
+
+Request:
+
+```json
+{
+  "eventReminder": true
+}
+```
+
+Success `200 OK`:
+
+```json
+{
+  "success": true,
+  "message": "Reminder settings updated successfully",
+  "data": {
+    "eventReminder": true
+  }
+}
+```
+
+Errors: `401 UNAUTHENTICATED`, `422 VALIDATION_ERROR`.
+
+## 6. Data model mục tiêu
 
 ### users
 
-Lưu thông tin tài khoản người dùng.
-
-Các trường chính:
-
-- `id`
-- `full_name`
-- `email`
-- `password`
-- `avatar`
-- `role`
-- `created_at`
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | bigint | Yes | Primary key. |
+| `full_name` | varchar | Yes | Display name. |
+| `email` | varchar unique | Yes | Login identifier. |
+| `password_hash` | varchar | Yes | BCrypt. |
+| `avatar` | varchar | No | URL in MVP. |
+| `role` | varchar | Yes | `USER`, `ADMIN`; current code may use roles table. |
+| `created_at` | timestamp | Yes | Audit. |
+| `updated_at` | timestamp | Yes | Audit. |
 
 ### events
 
-Lưu thông tin sự kiện.
-
-Các trường chính:
-
-- `id`
-- `title`
-- `date_time`
-- `location`
-- `latitude`
-- `longitude`
-- `price`
-- `description`
-- `image_url`
-- `created_at`
-- `updated_at`
+| Field | Type | Required | Phase | Notes |
+| --- | --- | --- | --- | --- |
+| `id` | bigint | Yes | MVP | Primary key. |
+| `title` | varchar | Yes | MVP | Event title. |
+| `date_time` | timestamp | Yes | MVP | Event start time. |
+| `location` | varchar | Yes | MVP | Display location. |
+| `latitude` | decimal | No | Phase 2 | Required for nearby events. |
+| `longitude` | decimal | No | Phase 2 | Required for nearby events. |
+| `price` | decimal | Yes | MVP | Ticket unit price. |
+| `total_tickets` | integer | Yes | MVP | Inventory ceiling. |
+| `description` | text | No | MVP | Event description. |
+| `image_url` | varchar | No | Phase 2 | Needed by frontend event card/detail. |
+| `created_at` | timestamp | Yes | Phase 2 | Audit. |
+| `updated_at` | timestamp | Yes | Phase 2 | Audit. |
+| `version` | integer | No | Phase 1 hardening | Optimistic locking for inventory updates. |
 
 ### bookings
 
-Lưu giao dịch đặt vé.
-
-Các trường chính:
-
-- `id`
-- `user_id`
-- `event_id`
-- `quantity`
-- `total_price`
-- `status`
-- `created_at`
-
-Trạng thái mục tiêu:
-
-- `PENDING`
-- `PAID`
-- `CANCELLED`
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | bigint | Yes | Primary key. |
+| `user_id` | bigint | Yes | Owner. |
+| `event_id` | bigint | Yes | Event. |
+| `quantity` | integer | Yes | Must be >= 1. |
+| `unit_price` | decimal | Yes | Snapshot price. |
+| `total_price` | decimal | Yes | Snapshot total. |
+| `status` | varchar | Yes | `PENDING`, `PAID`, `CANCELLED`, future `REFUNDED`. |
+| `created_at` | timestamp | Yes | Booking time. |
+| `updated_at` | timestamp | Yes | Status changes. |
 
 ### payments
 
-Lưu thông tin thanh toán.
-
-Các trường chính:
-
-- `id`
-- `booking_id`
-- `amount`
-- `status`
-- `created_at`
-
-Trạng thái mục tiêu:
-
-- `PAID`
-- `FAILED`
-
-### reminders
-
-Lưu cài đặt nhắc nhở của người dùng.
-
-Các trường chính:
-
-- `id`
-- `user_id`
-- `event_reminder`
-- `created_at`
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | bigint | Yes | Primary key. |
+| `booking_id` | bigint | Yes | One payment per successful booking in MVP. |
+| `amount` | decimal | Yes | Payment amount. |
+| `method` | varchar | Yes | `MOCK_CARD`, future gateway method. |
+| `status` | varchar | Yes | `PAID`, `FAILED`, future `REFUNDED`. |
+| `provider_reference` | varchar | No | Gateway transaction id. |
+| `created_at` | timestamp | Yes | Payment time. |
 
 ### tickets
 
-Lưu vé được sinh ra từ booking đã thanh toán.
+| Field | Type | Required | Phase | Notes |
+| --- | --- | --- | --- | --- |
+| `id` | bigint | Yes | MVP | Primary key. |
+| `ticket_code` | varchar unique | Yes | MVP | Human-readable code. |
+| `booking_id` | bigint | Yes | MVP | Source booking. |
+| `ticket_type` | varchar | No | Phase 4 | `GENERAL`, `VIP`, `EARLY_BIRD`. Default `GENERAL`. |
+| `seat_number` | varchar | No | Phase 4 | Nullable until seat map exists. |
+| `qr_payload` | text | No | Phase 4 | For QR check-in. |
+| `check_in_status` | varchar | No | Phase 4 | `UNUSED`, `CHECKED_IN`, `REVOKED`. |
+| `created_at` | timestamp | Yes | Phase 2 | Audit. |
 
-Các trường chính:
+### reminders
 
-- `id`
-- `ticket_code`
-- `booking_id`
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | bigint | Yes | Primary key. |
+| `user_id` | bigint | Yes | One reminder setting per user. |
+| `event_reminder` | boolean | Yes | Enable/disable. |
+| `created_at` | timestamp | Yes | Audit. |
+| `updated_at` | timestamp | Yes | Audit. |
 
-## 6. Hiện trạng codebase backend
+## 7. Frontend React specification
 
-Codebase hiện tại là dự án Spring Boot dùng Java 21, Maven, Spring Web, Spring Data JPA, Spring Security, JWT, Validation, Lombok và MySQL.
-
-Các package chính:
-
-- `controller`: `AuthController`, `EventController`, `BookingController`, `PaymentController`, `UserController`.
-- `entity`: `User`, `Role`, `Event`, `Booking`, `Payment`, `Ticket`, `Reminder`.
-- `dto`: auth, event, booking, user response DTO.
-- `service`: auth, event, booking, payment.
-- `repository`: user, role, event, booking, payment, ticket.
-- `security`: JWT service và authentication filter.
-- `exception`: exception handler và business exception.
-
-### Chênh lệch so với API Spec V1.0
-
-- API spec dùng `email` để đăng nhập, trong khi code hiện tại đang có DTO đăng nhập bằng `username`.
-- API spec có `fullName` và `avatar`, trong khi entity `User` hiện có `username`, `password`, `email`, `roles`.
-- API spec dùng role dạng enum trong bảng `users`, còn code hiện tại dùng `roles` và `user_roles`.
-- API spec có CRUD sự kiện cho admin, nhưng controller hiện tại mới có `GET /api/events` và `GET /api/events/{id}`.
-- API spec có `GET /api/tickets`, nhưng code hiện tại chưa có `TicketController`.
-- API spec có `PUT /api/users/reminders` và `PUT /api/users/profile`, nhưng `UserController` hiện đang rỗng.
-- API spec có payment body gồm `bookingId`, `cardNumber`, `expiry`, `cvv`, nhưng code hiện tại đang dùng `bookingId` dạng request param.
-- Entity `Event` hiện chưa có `imageUrl`, `latitude`, `longitude`, `createdAt`, `updatedAt`.
-- Entity `Booking` hiện chưa có `totalPrice` và `status`.
-- Entity `Reminder` hiện đang gắn với `Event`, trong khi spec target gắn reminder settings với `User`.
-- Service/repository implementation hiện tại còn ở mức skeleton ở nhiều file.
-- `AuthController` hiện thiếu annotation controller/request mapping cần thiết.
-- `SecurityConfig` hiện có lỗi cú pháp và thiếu annotation cấu hình cần thiết.
-
-### Verification snapshot
-
-Tại thời điểm lập PRD:
-
-- Repo đã được đọc ở `C:\Event_Booking_App\Event-Booking-App`.
-- PDF API Spec V1.0 đã được trích nội dung.
-- Lệnh `.\mvnw.cmd -q test` hiện fail ở lỗi compile trong `SecurityConfig.java`.
-- PRD này không sửa code backend, chỉ ghi nhận hiện trạng để định hướng phát triển.
-
-## 7. Frontend React
-
-Frontend nên được xây bằng React để cung cấp trải nghiệm đặt vé end-to-end cho người dùng và màn hình quản trị cho admin.
-
-### Stack đề xuất
+### Stack
 
 - React + Vite.
-- React Router cho routing.
-- Axios hoặc Fetch wrapper cho API client.
-- Context API hoặc Zustand cho auth state.
-- React Hook Form hoặc form state nhẹ cho form validation.
-- Tailwind CSS, CSS Modules hoặc SCSS tuỳ định hướng UI.
-- LocalStorage hoặc session storage để lưu JWT access token trong MVP.
-
-### Cấu trúc route đề xuất
-
-- `/`: trang danh sách sự kiện.
-- `/login`: đăng nhập.
-- `/register`: đăng ký.
-- `/events/:id`: chi tiết sự kiện.
-- `/bookings/checkout`: xác nhận đặt vé.
-- `/payments/:bookingId`: thanh toán.
-- `/tickets`: vé của tôi.
-- `/profile`: hồ sơ cá nhân.
-- `/admin/events`: quản lý sự kiện.
-- `/admin/events/new`: tạo sự kiện.
-- `/admin/events/:id/edit`: chỉnh sửa sự kiện.
-
-### Màn hình Login/Register
-
-Chức năng:
-
-- Nhập email/username theo contract backend được chọn.
-- Nhập mật khẩu.
-- Hiển thị lỗi validation theo response API.
-- Lưu token sau đăng nhập thành công.
-- Điều hướng về trang chủ hoặc trang trước đó.
-
-### Màn hình Home/Event Listing
-
-Chức năng:
-
-- Hiển thị danh sách sự kiện.
-- Tìm kiếm theo từ khoá.
-- Lọc theo `popular`, `upcoming`, `nearby`.
-- Pagination.
-- Empty state khi không có sự kiện.
-- Loading và error state.
-
-### Màn hình Event Detail
-
-Chức năng:
-
-- Hiển thị ảnh, tiêu đề, thời gian, địa điểm, giá, mô tả.
-- Cho phép chọn số lượng vé.
-- CTA đặt vé.
-- Nếu chưa đăng nhập, điều hướng sang login.
-
-### Màn hình Booking Confirmation
-
-Chức năng:
-
-- Hiển thị thông tin sự kiện.
-- Hiển thị số lượng vé và tổng tiền.
-- Tạo booking qua `POST /api/bookings`.
-- Điều hướng sang thanh toán sau khi booking thành công.
-
-### Màn hình Payment
-
-Chức năng:
-
-- Nhập thông tin thẻ trong MVP.
-- Validate format cơ bản ở frontend.
-- Gửi thanh toán qua `POST /api/payments`.
-- Hiển thị kết quả thanh toán.
-- Điều hướng sang vé của tôi sau khi thanh toán thành công.
-
-### Màn hình My Tickets/My Bookings
-
-Chức năng:
-
-- Hiển thị danh sách vé/booking của người dùng.
-- Hiển thị trạng thái `PENDING`, `PAID`, `CANCELLED`.
-- Với booking `PENDING`, cho phép tiếp tục thanh toán nếu backend hỗ trợ.
-
-### Màn hình Profile Settings
-
-Chức năng:
-
-- Cập nhật họ tên.
-- Cập nhật avatar URL.
-- Bật/tắt nhắc nhở sự kiện.
-- Hiển thị thông báo lưu thành công hoặc lỗi validation.
-
-### Màn hình Admin Event Management
-
-Chức năng:
-
-- Danh sách sự kiện.
-- Tạo sự kiện mới.
-- Chỉnh sửa sự kiện.
-- Xoá sự kiện.
-- Bảo vệ route theo role `ADMIN`.
-- Hiển thị lỗi `403 Forbidden` nếu user không đủ quyền.
-
-### Frontend API contract
-
-Frontend cần có API client thống nhất:
-
-- Tự động gắn `Authorization: Bearer <token>` cho protected endpoints.
-- Tự động logout hoặc điều hướng login khi nhận `401`.
-- Hiển thị thông báo không đủ quyền khi nhận `403`.
-- Parse lỗi validation từ `errors`.
-- Chuẩn hoá loading/error/success state cho các màn hình chính.
-
-## 8. Gợi ý chức năng mở rộng
-
-### Wishlist/Favorite events
-
-Cho phép người dùng lưu sự kiện yêu thích để xem lại và đặt vé sau.
-
-### Cancel booking và refund flow
-
-Cho phép người dùng huỷ booking theo chính sách thời gian. Nếu đã thanh toán, hệ thống có thể tạo refund request.
-
-### QR code ticket check-in
-
-Sinh QR code cho vé đã thanh toán. Admin hoặc nhân viên sự kiện quét QR để check-in.
-
-### Email/push reminders
-
-Gửi email hoặc push notification trước giờ sự kiện dựa trên cài đặt reminder.
-
-### Review và rating
-
-Người dùng đánh giá sự kiện sau khi tham gia. Rating có thể dùng để cải thiện ranking sự kiện.
-
-### Admin analytics
-
-Bổ sung dashboard cho admin:
-
-- Tổng doanh thu.
-- Tổng vé đã bán.
-- Sự kiện phổ biến.
-- Tỷ lệ booking thanh toán thành công.
-- Doanh thu theo thời gian.
-
-### Seat map hoặc ticket tier
-
-Hỗ trợ sơ đồ ghế hoặc nhiều loại vé như Standard, VIP, Early Bird.
-
-### Upload ảnh
-
-Cho phép upload ảnh sự kiện và avatar thay vì chỉ nhập URL.
-
-### Nearby events bằng geolocation
-
-Sử dụng latitude/longitude của sự kiện và vị trí người dùng để tính khoảng cách.
-
-### Payment gateway thật
-
-Tích hợp Stripe, VNPay hoặc MoMo sandbox để thay thế payment giả lập.
-
-### Search nâng cao
-
-Cho phép lọc theo khoảng giá, ngày, thành phố, category hoặc trạng thái còn vé.
-
-### Event category
-
-Phân loại sự kiện như âm nhạc, thể thao, triển lãm, hội thảo, giáo dục.
-
-## 9. Tiêu chí nghiệm thu
-
-PRD được xem là hoàn tất khi:
-
-- File `PRD.md` tồn tại ở root repo.
-- Nội dung viết bằng tiếng Việt.
-- Có mô tả mục tiêu sản phẩm, người dùng, luồng nghiệp vụ, API, data model.
-- Có phần frontend React với stack, route và màn hình chính.
-- Có danh sách chức năng mở rộng.
-- Có ghi nhận chênh lệch giữa API spec và codebase hiện tại.
-- Có ghi nhận hiện trạng build/test backend.
-
-## 10. Ưu tiên phát triển tiếp theo
-
-### Phase 1 - Sửa backend để chạy được
-
-- Sửa `SecurityConfig`.
-- Bổ sung annotation cho controller/config/service/repository còn thiếu.
-- Hoàn thiện repository interface theo Spring Data JPA.
-- Hoàn thiện service implementation cho auth, event, booking, payment.
-- Chuẩn hoá exception handler và response format.
-
-### Phase 2 - Đồng bộ backend với API spec
-
-- Chuyển login/register sang contract email/fullName nếu chọn theo spec.
-- Bổ sung CRUD sự kiện cho admin.
-- Bổ sung tickets endpoint.
-- Bổ sung profile và reminders endpoint.
-- Bổ sung payment request body và payment status.
-- Bổ sung các field còn thiếu trong entity/schema.
-
-### Phase 3 - Xây frontend React MVP
+- React Router.
+- Axios or Fetch wrapper.
+- Zustand hoặc Context API cho auth state.
+- React Hook Form cho form state/validation.
+- Tailwind CSS, CSS Modules hoặc SCSS.
+- LocalStorage cho MVP token storage; production nên cân nhắc HttpOnly cookie nếu có backend support.
+
+### Routes
+
+| Route | Access | Screen |
+| --- | --- | --- |
+| `/` | Public | Event listing. |
+| `/events/:id` | Public | Event detail. |
+| `/login` | Public only | Login. |
+| `/register` | Public only | Register. |
+| `/bookings/checkout/:eventId` | User | Booking confirmation. |
+| `/payments/:bookingId` | User | Payment. |
+| `/tickets` | User | My tickets/bookings. |
+| `/profile` | User | Profile and reminder settings. |
+| `/admin/events` | Admin | Event management. |
+| `/admin/events/new` | Admin | Create event. |
+| `/admin/events/:id/edit` | Admin | Edit event. |
+
+### Component breakdown
+
+| Component | Responsibility | Depends on |
+| --- | --- | --- |
+| `AppShell` | Main layout, nav, auth-aware links. | `useAuthStore`. |
+| `AuthGuard` | Protect user/admin routes. | Auth state and role. |
+| `ApiClient` | Attach token, parse envelope, handle 401/403. | Token storage. |
+| `EventListPage` | Search/filter/pagination and event grid/list. | `EventCard`, event API. |
+| `EventCard` | Show title, date, location, price, image, available tickets. | Event response. |
+| `EventDetailPage` | Detail content and booking CTA. | Event API, auth state. |
+| `BookingPanel` | Quantity selector, price summary, create booking. | Booking API. |
+| `PaymentPage` | Mock card form, pay booking, success transition. | Payment API. |
+| `TicketsPage` | List tickets/bookings and status badges. | Tickets/bookings API. |
+| `ProfileSettingsPage` | Full name/avatar/reminder form. | User API. |
+| `AdminEventListPage` | Admin event table, edit/delete actions. | Admin event API. |
+| `EventForm` | Create/update event form. | Validation schema. |
+| `StateView` | Reusable loading/empty/error/forbidden states. | UI system. |
+
+### UI states
+
+Every data screen must define:
+
+- Loading: skeleton rows/cards while API request is pending.
+- Empty: event list has no results, ticket list has no tickets, admin list has no events.
+- Error: network/server error with retry action.
+- Validation: field-level messages from `errors[]`.
+- Unauthorized: clear token and redirect to `/login`.
+- Forbidden: show access denied state, keep user logged in.
+- Success: toast/inline confirmation for create/update/payment/profile save.
+
+### Auth state flow
+
+1. App startup reads token from storage.
+2. If token exists, app marks auth as `checking` and calls `GET /api/users/profile`.
+3. If profile succeeds, store `user`, `role`, `isAuthenticated=true`.
+4. If profile returns 401, clear token and redirect protected route to login.
+5. Login/register success writes token and user to store, then redirects to previous route or `/`.
+6. Axios/fetch interceptor attaches `Authorization` for protected calls.
+7. 403 does not logout; UI shows forbidden state.
+8. Logout clears token and user, then redirects to `/login`.
+
+### Text wireframes
+
+Event listing:
+
+```text
+[Top nav: logo | Events | Tickets | Profile | Admin/Login]
+[Search input] [Type segmented control: Upcoming | Popular | Nearby] [Sort]
+[Event card image] Title
+Date/time - Location
+Price - Available tickets
+[View details]
+[Pagination]
+```
+
+Event detail:
+
+```text
+[Image]
+Title
+Date/time - Location - Price
+Description
+[Quantity stepper] [Total price]
+[Book now]
+```
+
+Payment:
+
+```text
+Booking summary
+Card number / Expiry / CVV
+[Pay]
+Success state -> [View my tickets]
+```
+
+Admin event management:
+
+```text
+[Create event]
+Table: title | date | location | price | available | actions
+Actions: edit, delete
+```
+
+## 8. Sequence diagrams
+
+### React auth sequence
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant React
+  participant AuthStore
+  participant ApiClient
+  participant API as Spring API
+  User->>React: Submit login(email, password)
+  React->>ApiClient: POST /api/auth/login
+  ApiClient->>API: credentials
+  API-->>ApiClient: accessToken, expiresAt, user
+  ApiClient-->>AuthStore: parsed auth data
+  AuthStore->>AuthStore: persist token
+  AuthStore-->>React: authenticated
+  React-->>User: Redirect to previous route
+```
+
+### React booking and payment sequence
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant React
+  participant ApiClient
+  participant EventAPI as Event API
+  participant BookingAPI as Booking API
+  participant PaymentAPI as Payment API
+  participant TicketAPI as Ticket API
+  User->>React: Open event detail
+  React->>ApiClient: GET /api/events/{id}
+  ApiClient->>EventAPI: request
+  EventAPI-->>React: event detail
+  User->>React: Select quantity and book
+  React->>ApiClient: POST /api/bookings
+  ApiClient->>BookingAPI: eventId, quantity
+  BookingAPI-->>React: booking PENDING
+  React-->>User: Show payment form
+  User->>React: Submit payment
+  React->>ApiClient: POST /api/payments
+  ApiClient->>PaymentAPI: bookingId + mock card
+  PaymentAPI-->>React: payment PAID + ticketCode
+  React->>ApiClient: GET /api/tickets
+  ApiClient->>TicketAPI: request tickets
+  TicketAPI-->>React: ticket list
+  React-->>User: Show My Tickets
+```
+
+### React admin event sequence
+
+```mermaid
+sequenceDiagram
+  actor Admin
+  participant React
+  participant AuthGuard
+  participant ApiClient
+  participant EventAPI
+  Admin->>React: Open /admin/events
+  React->>AuthGuard: Check role
+  alt Role is ADMIN
+    AuthGuard-->>React: allow
+    React->>ApiClient: GET /api/events
+    ApiClient->>EventAPI: request
+    EventAPI-->>React: paged events
+    Admin->>React: Submit event form
+    React->>ApiClient: POST or PUT /api/events
+    ApiClient->>EventAPI: event payload
+    EventAPI-->>React: saved event
+  else Role missing
+    AuthGuard-->>React: forbidden state
+  end
+```
+
+### Backend inventory protection sequence
+
+```mermaid
+sequenceDiagram
+  actor UserA
+  actor UserB
+  participant BookingService
+  participant EventRepository
+  participant BookingRepository
+  UserA->>BookingService: book(eventId, qty)
+  UserB->>BookingService: book(eventId, qty)
+  BookingService->>EventRepository: lock or version-check event inventory
+  BookingService->>BookingRepository: sum active booked quantity
+  alt enough tickets
+    BookingService->>BookingRepository: save PENDING booking
+    BookingService-->>UserA: booking created
+  else sold out
+    BookingService-->>UserB: 409 EVENT_SOLD_OUT
+  end
+```
+
+## 9. Non-functional requirements
+
+### Performance
+
+- Event list/detail p95 response time: < 500 ms for MVP data volume.
+- Booking/payment p95 response time: < 700 ms excluding external payment gateway latency.
+- API should support at least 100 concurrent authenticated users and 500 concurrent anonymous browse requests in MVP test environment.
+- Pagination required for event list, admin list, bookings and tickets.
+
+### Reliability and consistency
+
+- Booking creation must be transactional.
+- Oversell prevention is required before public launch: use pessimistic lock on event inventory, optimistic locking with `version`, or a dedicated inventory/reservation table.
+- Payment should be idempotent by `bookingId` for MVP mock and by idempotency key when gateway is integrated.
+
+### Security
+
+- JWT expiration: 24 hours in local/dev, 1-2 hours in production unless refresh token flow is added.
+- Passwords must be BCrypt hashed.
+- CORS must whitelist explicit frontend origins; do not use wildcard in production.
+- Rate limiting targets:
+  - Auth endpoints: 5 failed attempts/minute/email/IP.
+  - Booking/payment endpoints: conservative per-user limit to reduce abuse.
+- Secrets such as DB password and JWT secret must come from environment variables or secret manager, not committed properties files.
+- Do not persist raw card number, expiry or CVV. Payment mock may validate format only.
+- Admin seed must be disabled by default and guarded by `spring.profiles.active=dev,test` plus `app.admin.seed=true`; app should refuse seed when active profile is `prod`.
+
+### Deployment environments
+
+- Local: Spring Boot + MySQL local, H2 for tests, React dev server.
+- Test/CI: H2 or test container DB, deterministic seed data.
+- Staging: MySQL/PostgreSQL managed DB, CORS to staging frontend, production-like secrets.
+- Production: HTTPS, managed DB, secret manager, monitoring/log aggregation, no admin seed.
+
+### Observability
+
+- Log auth failures without password/card data.
+- Log booking/payment status transitions with booking id and user id.
+- Track metrics for request count, latency, error rate, booking conversion and payment success.
+
+## 10. Hiện trạng codebase backend
+
+Codebase hiện tại là Spring Boot backend với Maven, Spring Web, Spring Security, Spring Data JPA, JWT, Validation, Lombok, MySQL runtime và H2 test.
+
+### Implemented in code snapshot
+
+| Area | Trạng thái | Ghi chú |
+| --- | --- | --- |
+| Auth/JWT | Partial | Có register/login JWT nhưng contract hiện dùng `username`, cần migrate email-first. |
+| Event API | Partial | Có list/detail/admin CRUD; cần thêm `type=popular/nearby`, `imageUrl`, `latitude`, `longitude`. |
+| Booking | Partial | Có create booking, status, total price, cancel pending; cần locking chống oversell. |
+| Payment | Partial | Mock payment tạo payment/ticket; cần response envelope, validation và idempotency. |
+| Tickets | Partial | Có list tickets; cần `ticketType`, `seatNumber` ở phase sau. |
+| Profile/reminders | Partial | Có endpoints cơ bản; cần validation/envelope. |
+| Favorites | Extension partial | Backend tối thiểu đã có trong code snapshot. |
+| Frontend | Not started | Chưa có React source trong repo. |
+
+### Gaps cần xử lý
+
+- Auth contract hiện lệch: code dùng `username`, PRD quyết định email-first.
+- Success response chưa thống nhất envelope.
+- Error code/status cần chuẩn hoá theo catalog ở Section 5.
+- Event model thiếu `imageUrl`, `latitude`, `longitude`, audit fields và locking/version.
+- Popular/nearby filters chưa đủ theo product goal.
+- Admin seed cần guard bằng profile dev/test.
+- Main config không nên chứa secret local hard-coded.
+- Build/test phụ thuộc JDK target; môi trường dev cần thống nhất JDK theo `pom.xml`.
+
+## 11. Risk management
+
+| Risk | Severity | Impact | Mitigation |
+| --- | --- | --- | --- |
+| Auth username/email ambiguity | High | Frontend/backend tích hợp sai contract. | Đã chốt email-first trong PRD; Phase 1 migrate backend DTO/service/tests. |
+| Race condition khi nhiều user đặt cùng event hot | High | Oversell, mất uy tín, khó refund. | Thêm pessimistic/optimistic locking hoặc inventory table trước public launch; test concurrent booking. |
+| Admin seed bật nhầm production | High | Tạo tài khoản admin mặc định ngoài môi trường an toàn. | `app.admin.seed=false` mặc định, chỉ cho `dev/test`, app fail-fast nếu seed true trên `prod`. |
+| Payment mock bị hiểu nhầm là payment thật | Medium | Sai kỳ vọng nghiệp vụ và bảo mật card. | Gắn nhãn mock rõ ràng, không lưu raw card, phase gateway riêng. |
+| Response shape không thống nhất | Medium | Frontend phải xử lý nhiều kiểu response. | Chuẩn hoá envelope/error catalog trước khi frontend bắt đầu. |
+| Frontend chưa triển khai | Medium | Chưa demo được user journey end-to-end. | Scaffold React sau khi API contract ổn định. |
+| Hard-coded local secrets | Medium | Rủi ro lộ credential và khó deploy. | Dùng env vars, profile-specific config, không commit secret thật. |
+
+## 12. Roadmap ưu tiên
+
+### Phase 1 - Ngay
+
+- Migrate auth sang email-first contract.
+- Chuẩn hoá response envelope và error catalog.
+- Thêm request/response tests cho các API chính.
+- Guard admin seed bằng profile dev/test.
+- Loại bỏ secret hard-coded khỏi main config.
+- Thêm locking hoặc version field để chống oversell booking.
+
+### Phase 2 - Đồng bộ API/data model
+
+- Thêm `imageUrl`, `latitude`, `longitude`, `createdAt`, `updatedAt` cho events.
+- Thêm popular/nearby filters.
+- Thêm status/error code đầy đủ cho booking/payment.
+- Bổ sung ticket fields nullable: `ticketType`, `seatNumber`.
+- Chuẩn hoá Swagger/OpenAPI hoặc API docs từ contract này.
+
+### Phase 3 - React MVP
 
 - Scaffold React + Vite.
-- Tạo routing và layout.
-- Tạo auth flow.
-- Tạo event listing/detail.
-- Tạo booking/payment flow.
-- Tạo tickets/profile screens.
+- Tạo API client, auth store, route guards.
+- Tạo event listing/detail với loading/empty/error states.
+- Tạo booking/payment/tickets/profile flows.
 - Tạo admin event management.
 
-### Phase 4 - Mở rộng sản phẩm
+### Phase 4 - Product extensions
 
-- QR ticket.
-- Notification/reminder thật.
-- Analytics dashboard.
-- Upload ảnh.
-- Payment gateway thật.
-- Nearby events bằng vị trí GPS.
+- Favorite UI.
+- QR ticket check-in.
+- Email/push reminders.
+- Refund/cancel paid booking.
+- Admin analytics.
+- Upload event/avatar images.
+- Payment gateway sandbox.
+
+## 13. Acceptance criteria
+
+PRD được xem là đủ dùng cho triển khai tiếp khi:
+
+- Có problem statement, target personas và success metrics.
+- Có quyết định auth email-first rõ ràng.
+- Có API contract với request/response mẫu, status codes và error codes.
+- Có frontend routes, component breakdown, UI states và auth state flow.
+- Có NFR cho performance, concurrency, security, deploy environments.
+- Có data model fields và phase bổ sung cho event image/GPS, ticket type/seat.
+- Có sequence diagram từ góc độ React tới API.
+- Có risk severity đúng cho race condition và admin seed.
