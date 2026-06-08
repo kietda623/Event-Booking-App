@@ -215,6 +215,7 @@ User cập nhật full name, avatar URL và bật/tắt reminder setting.
 | `UNAUTHENTICATED` | Unauthorized | Token missing/invalid/expired. |
 | `FORBIDDEN` | Forbidden | Role không đủ quyền. |
 | `RESOURCE_NOT_FOUND` | Resource not found | Dùng cả khi user truy cập resource không thuộc mình. |
+| `EVENT_HAS_ACTIVE_BOOKINGS` | Event has active bookings | Không hard delete event khi còn `PENDING` hoặc `PAID` bookings. |
 | `EVENT_SOLD_OUT` | Not enough tickets available | Nên trả 409. |
 | `BOOKING_NOT_PAYABLE` | Booking cannot be paid | Booking cancelled/not owned/not pending. |
 | `BOOKING_ALREADY_PAID` | Booking is already paid | Idempotency cần thiết ở phase gateway thật. |
@@ -403,7 +404,55 @@ Role: `ADMIN`.
 
 Success `204 No Content`.
 
-Errors: `401 UNAUTHENTICATED`, `403 FORBIDDEN`, `404 RESOURCE_NOT_FOUND`, `409 BUSINESS_RULE_VIOLATION` nếu event đã có paid booking và policy không cho xoá.
+Delete policy:
+
+- Block delete when event has any active booking with status `PENDING` or `PAID`.
+- Allow delete only when event has no bookings, or all bookings are terminal and no longer business-relevant after an explicit admin archival policy exists.
+- Phase sau nên ưu tiên soft delete/cancel event thay vì hard delete để giữ lịch sử booking/ticket.
+
+Errors: `401 UNAUTHENTICATED`, `403 FORBIDDEN`, `404 RESOURCE_NOT_FOUND`, `409 EVENT_HAS_ACTIVE_BOOKINGS` nếu event có active bookings.
+
+#### GET `/api/events/{id}/bookings`
+
+Phase: later admin reporting endpoint.
+
+Role: `ADMIN`.
+
+Query params:
+
+| Param | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `page` | integer | No | 0 | Zero-based. |
+| `size` | integer | No | 20 | Max 100. |
+| `status` | string | No | null | Optional `PENDING`, `PAID`, `CANCELLED`. |
+
+Success `200 OK`:
+
+```json
+{
+  "success": true,
+  "message": "Event bookings retrieved successfully",
+  "data": {
+    "content": [
+      {
+        "bookingId": 501,
+        "userId": 12,
+        "userEmail": "jane@example.com",
+        "quantity": 2,
+        "totalPrice": 50.0,
+        "status": "PAID",
+        "createdAt": "2026-06-08T12:30:00Z"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+Errors: `401 UNAUTHENTICATED`, `403 FORBIDDEN`, `404 RESOURCE_NOT_FOUND`, `422 VALIDATION_ERROR`.
 
 #### POST `/api/bookings`
 
@@ -443,23 +492,37 @@ Errors: `401 UNAUTHENTICATED`, `404 RESOURCE_NOT_FOUND`, `409 EVENT_SOLD_OUT`, `
 
 Role: `USER`.
 
+Query params:
+
+| Param | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `page` | integer | No | 0 | Zero-based. |
+| `size` | integer | No | 10 | Max 100. |
+| `status` | string | No | null | Optional `PENDING`, `PAID`, `CANCELLED`. |
+
 Success `200 OK`:
 
 ```json
 {
   "success": true,
   "message": "Bookings retrieved successfully",
-  "data": [
-    {
-      "bookingId": 501,
-      "eventId": 101,
-      "eventTitle": "Art Exhibition",
-      "quantity": 2,
-      "totalPrice": 50.0,
-      "status": "PENDING",
-      "createdAt": "2026-06-08T12:30:00Z"
-    }
-  ]
+  "data": {
+    "content": [
+      {
+        "bookingId": 501,
+        "eventId": 101,
+        "eventTitle": "Art Exhibition",
+        "quantity": 2,
+        "totalPrice": 50.0,
+        "status": "PENDING",
+        "createdAt": "2026-06-08T12:30:00Z"
+      }
+    ],
+    "page": 0,
+    "size": 10,
+    "totalElements": 1,
+    "totalPages": 1
+  }
 }
 ```
 
@@ -493,12 +556,11 @@ Request:
 ```json
 {
   "bookingId": 501,
-  "cardNumber": "4242 4242 4242 4242",
-  "expiry": "12/28",
-  "cvv": "123",
   "method": "MOCK_CARD"
 }
 ```
+
+MVP mock payment không cần nhận raw card data. Nếu team muốn test form validation ở frontend, `cardNumber`, `expiry`, `cvv` chỉ được dùng cho **format-only validation** ở client hoặc trong một test-only DTO, không persist, không log và không gửi sang payment provider thật.
 
 Success `200 OK`:
 
@@ -522,26 +584,40 @@ Errors: `401 UNAUTHENTICATED`, `404 RESOURCE_NOT_FOUND`, `409 BOOKING_ALREADY_PA
 
 Role: `USER`.
 
+Query params:
+
+| Param | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `page` | integer | No | 0 | Zero-based. |
+| `size` | integer | No | 10 | Max 100. |
+| `status` | string | No | null | Optional booking/ticket status filter. |
+
 Success `200 OK`:
 
 ```json
 {
   "success": true,
   "message": "Tickets retrieved successfully",
-  "data": [
-    {
-      "ticketId": 7001,
-      "ticketCode": "TICKET-A1B2C3D4",
-      "ticketType": "GENERAL",
-      "seatNumber": null,
-      "eventId": 101,
-      "eventTitle": "Art Exhibition",
-      "dateTime": "2026-07-12T10:00:00Z",
-      "location": "Modern Art Gallery, New York",
-      "quantity": 2,
-      "status": "PAID"
-    }
-  ]
+  "data": {
+    "content": [
+      {
+        "ticketId": 7001,
+        "ticketCode": "TICKET-A1B2C3D4",
+        "ticketType": "GENERAL",
+        "seatNumber": null,
+        "eventId": 101,
+        "eventTitle": "Art Exhibition",
+        "dateTime": "2026-07-12T10:00:00Z",
+        "location": "Modern Art Gallery, New York",
+        "quantity": 2,
+        "status": "PAID"
+      }
+    ],
+    "page": 0,
+    "size": 10,
+    "totalElements": 1,
+    "totalPages": 1
+  }
 }
 ```
 
@@ -692,6 +768,17 @@ Errors: `401 UNAUTHENTICATED`, `422 VALIDATION_ERROR`.
 | `created_at` | timestamp | Yes | Audit. |
 | `updated_at` | timestamp | Yes | Audit. |
 
+### favorites
+
+| Field | Type | Required | Phase | Notes |
+| --- | --- | --- | --- | --- |
+| `id` | bigint | Yes | MVP extension | Primary key. |
+| `user_id` | bigint | Yes | MVP extension | Owner. |
+| `event_id` | bigint | Yes | MVP extension | Favorited event. |
+| `created_at` | timestamp | Yes | Phase 2 | Audit. |
+
+Constraint: unique `(user_id, event_id)` để toggle favorite idempotent và tránh duplicate wishlist rows.
+
 ## 7. Frontend React specification
 
 ### Stack
@@ -702,7 +789,7 @@ Errors: `401 UNAUTHENTICATED`, `422 VALIDATION_ERROR`.
 - Zustand hoặc Context API cho auth state.
 - React Hook Form cho form state/validation.
 - Tailwind CSS, CSS Modules hoặc SCSS.
-- LocalStorage cho MVP token storage; production nên cân nhắc HttpOnly cookie nếu có backend support.
+- LocalStorage có thể dùng cho MVP token storage nếu cần triển khai nhanh, nhưng phải ghi nhận rủi ro XSS đọc token. Frontend cần sanitize user-controlled content, tránh `dangerouslySetInnerHTML`, bật CSP khi deploy và cân nhắc HttpOnly cookie khi có refresh token flow.
 
 ### Routes
 
@@ -846,7 +933,7 @@ sequenceDiagram
   React-->>User: Show payment form
   User->>React: Submit payment
   React->>ApiClient: POST /api/payments
-  ApiClient->>PaymentAPI: bookingId + mock card
+  ApiClient->>PaymentAPI: bookingId + method
   PaymentAPI-->>React: payment PAID + ticketCode
   React->>ApiClient: GET /api/tickets
   ApiClient->>TicketAPI: request tickets
@@ -900,6 +987,8 @@ sequenceDiagram
   end
 ```
 
+Concurrency note: Mermaid sequence diagram vẫn biểu diễn các bước theo thứ tự, nên nó chỉ minh hoạ điểm đặt lock/version-check chứ không chứng minh an toàn race condition. Implementation cần một trong ba chiến lược: pessimistic lock row `events` khi tính vé còn lại, optimistic locking bằng `version` và retry có giới hạn, hoặc bảng inventory/seat hold riêng với unique constraints. Acceptance test phải có concurrent booking test để xác nhận không oversell.
+
 ## 9. Non-functional requirements
 
 ### Performance
@@ -924,7 +1013,8 @@ sequenceDiagram
   - Auth endpoints: 5 failed attempts/minute/email/IP.
   - Booking/payment endpoints: conservative per-user limit to reduce abuse.
 - Secrets such as DB password and JWT secret must come from environment variables or secret manager, not committed properties files.
-- Do not persist raw card number, expiry or CVV. Payment mock may validate format only.
+- Payment mock must not require, persist or log raw card number, expiry or CVV. If card fields are used only for UI validation experiments, validation must be format-only and test-only.
+- LocalStorage token storage is acceptable only as an MVP trade-off. Because XSS can read LocalStorage, frontend must sanitize user input/output, avoid unsafe HTML injection, consider CSP, and move to HttpOnly cookie/refresh-token flow for production.
 - Admin seed must be disabled by default and guarded by `spring.profiles.active=dev,test` plus `app.admin.seed=true`; app should refuse seed when active profile is `prod`.
 
 ### Deployment environments
@@ -984,38 +1074,49 @@ Codebase hiện tại là Spring Boot backend với Maven, Spring Web, Spring Se
 
 ### Phase 1 - Ngay
 
-- Migrate auth sang email-first contract.
-- Chuẩn hoá response envelope và error catalog.
-- Thêm request/response tests cho các API chính.
-- Guard admin seed bằng profile dev/test.
-- Loại bỏ secret hard-coded khỏi main config.
-- Thêm locking hoặc version field để chống oversell booking.
+| Effort | Item |
+| --- | --- |
+| M | Migrate auth sang email-first contract. |
+| M | Chuẩn hoá response envelope và error catalog. |
+| S | Payment mock chỉ nhận `bookingId` và `method`, không nhận raw card data. |
+| M | Thêm request/response tests cho các API chính. |
+| S | Guard admin seed bằng profile dev/test. |
+| S | Loại bỏ secret hard-coded khỏi main config. |
+| M/L | Thêm locking hoặc version field để chống oversell booking và test concurrent booking. |
 
 ### Phase 2 - Đồng bộ API/data model
 
-- Thêm `imageUrl`, `latitude`, `longitude`, `createdAt`, `updatedAt` cho events.
-- Thêm popular/nearby filters.
-- Thêm status/error code đầy đủ cho booking/payment.
-- Bổ sung ticket fields nullable: `ticketType`, `seatNumber`.
-- Chuẩn hoá Swagger/OpenAPI hoặc API docs từ contract này.
+| Effort | Item |
+| --- | --- |
+| M | Thêm `imageUrl`, `latitude`, `longitude`, `createdAt`, `updatedAt` cho events. |
+| M | Thêm popular/nearby filters. |
+| S | Thêm pagination cho `GET /api/bookings/my` và `GET /api/tickets`. |
+| S | Thêm `GET /api/events/{id}/bookings` cho admin xem booking theo event. |
+| S | Thêm status/error code đầy đủ cho booking/payment. |
+| S | Bổ sung ticket fields nullable: `ticketType`, `seatNumber`. |
+| M | Xuất OpenAPI/Swagger YAML từ Section 5 để backend/frontend dùng chung contract và hỗ trợ client generation. |
 
 ### Phase 3 - React MVP
 
-- Scaffold React + Vite.
-- Tạo API client, auth store, route guards.
-- Tạo event listing/detail với loading/empty/error states.
-- Tạo booking/payment/tickets/profile flows.
-- Tạo admin event management.
+| Effort | Item |
+| --- | --- |
+| S | Scaffold React + Vite. |
+| M | Tạo API client, auth store, route guards. |
+| M | Tạo event listing/detail với loading/empty/error states. |
+| M | Tạo booking/payment/tickets/profile flows. |
+| M | Tạo admin event management. |
 
 ### Phase 4 - Product extensions
 
-- Favorite UI.
-- QR ticket check-in.
-- Email/push reminders.
-- Refund/cancel paid booking.
-- Admin analytics.
-- Upload event/avatar images.
-- Payment gateway sandbox.
+| Effort | Item |
+| --- | --- |
+| S | Favorite UI. |
+| L | QR ticket check-in. |
+| M/L | Email/push reminders. |
+| L | Refund/cancel paid booking. |
+| M | Admin analytics. |
+| M | Upload event/avatar images. |
+| L | Payment gateway sandbox. |
 
 ## 13. Acceptance criteria
 
@@ -1027,5 +1128,11 @@ PRD được xem là đủ dùng cho triển khai tiếp khi:
 - Có frontend routes, component breakdown, UI states và auth state flow.
 - Có NFR cho performance, concurrency, security, deploy environments.
 - Có data model fields và phase bổ sung cho event image/GPS, ticket type/seat.
+- Có `favorites` schema hoặc phase note rõ ràng.
+- Payment mock không yêu cầu raw card data và có caveat format-only nếu test validation.
+- Bookings/tickets list endpoints có pagination contract.
+- Token storage có caveat XSS khi dùng LocalStorage.
+- Delete event policy rõ khi có active bookings.
 - Có sequence diagram từ góc độ React tới API.
 - Có risk severity đúng cho race condition và admin seed.
+- Roadmap có effort estimate và OpenAPI/Swagger export item.

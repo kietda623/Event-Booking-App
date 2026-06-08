@@ -37,7 +37,6 @@
 <li>Ticket tier/seat map.</li>
 <li>Payment gateway thật.</li>
 </ul>
-
 </section>
 <section id="2-quyet-inh-product-quan-trong" class="section"><h2>2. Quyết định product quan trọng</h2>
 <h3>Authentication contract</h3>
@@ -80,7 +79,6 @@
   ]
 }</code></pre>
 <p>Trong Phase 1 có thể giữ DTO trực tiếp nếu cần chạy nhanh, nhưng Phase 2 phải chuẩn hoá envelope trước khi frontend đóng contract.</p>
-
 </section>
 <section id="3-nguoi-dung-va-vai-tro" class="section"><h2>3. Người dùng và vai trò</h2>
 <h3>Guest</h3>
@@ -107,7 +105,6 @@
 <li>Xem dữ liệu event và booking ở các phase mở rộng.</li>
 <li>Không được seed admin mặc định trong production.</li>
 </ul>
-
 </section>
 <section id="4-luong-nghiep-vu-chinh" class="section"><h2>4. Luồng nghiệp vụ chính</h2>
 <h3>Register</h3>
@@ -133,7 +130,6 @@
 <p>User xem booking và ticket của mình. Ticket trả về event info, quantity, status và ticket code.</p>
 <h3>Profile and reminders</h3>
 <p>User cập nhật full name, avatar URL và bật/tắt reminder setting.</p>
-
 </section>
 <section id="5-api-contract-chi-tiet" class="section"><h2>5. API contract chi tiết</h2>
 <h3>API conventions</h3>
@@ -148,7 +144,7 @@
 <h3>Common HTTP status</h3>
 <div class="table-wrap"><table><thead><tr><th>Status</th><th>Khi dùng</th><th>Response code</th></tr></thead><tbody><tr><td>200 OK</td><td>Read/update/payment thành công</td><td>Tuỳ endpoint</td></tr><tr><td>201 Created</td><td>Tạo user, event, booking thành công</td><td>Tuỳ endpoint</td></tr><tr><td>204 No Content</td><td>Delete thành công</td><td>N/A</td></tr><tr><td>400 Bad Request</td><td>Request đúng schema nhưng vi phạm business rule</td><td><code>BUSINESS_RULE_VIOLATION</code></td></tr><tr><td>401 Unauthorized</td><td>Thiếu token, token sai, token hết hạn, login sai</td><td><code>UNAUTHENTICATED</code></td></tr><tr><td>403 Forbidden</td><td>User không có quyền</td><td><code>FORBIDDEN</code></td></tr><tr><td>404 Not Found</td><td>Resource không tồn tại hoặc không thuộc user hiện tại</td><td><code>RESOURCE_NOT_FOUND</code></td></tr><tr><td>409 Conflict</td><td>Email đã tồn tại, hết vé, booking đã paid</td><td><code>EMAIL_ALREADY_EXISTS</code>, <code>EVENT_SOLD_OUT</code>, <code>BOOKING_ALREADY_PAID</code></td></tr><tr><td>422 Unprocessable Entity</td><td>Validation field-level</td><td><code>VALIDATION_ERROR</code></td></tr><tr><td>500 Internal Server Error</td><td>Lỗi hệ thống chưa xử lý</td><td><code>INTERNAL_ERROR</code></td></tr></tbody></table></div>
 <h3>Error code catalog</h3>
-<div class="table-wrap"><table><thead><tr><th>Code</th><th>Message đề xuất</th><th>Ghi chú</th></tr></thead><tbody><tr><td><code>VALIDATION_ERROR</code></td><td>Validation failed</td><td>Kèm <code>errors[]</code>.</td></tr><tr><td><code>EMAIL_ALREADY_EXISTS</code></td><td>Email already exists</td><td>Register conflict.</td></tr><tr><td><code>INVALID_CREDENTIALS</code></td><td>Invalid email or password</td><td>Không tiết lộ email có tồn tại hay không.</td></tr><tr><td><code>UNAUTHENTICATED</code></td><td>Unauthorized</td><td>Token missing/invalid/expired.</td></tr><tr><td><code>FORBIDDEN</code></td><td>Forbidden</td><td>Role không đủ quyền.</td></tr><tr><td><code>RESOURCE_NOT_FOUND</code></td><td>Resource not found</td><td>Dùng cả khi user truy cập resource không thuộc mình.</td></tr><tr><td><code>EVENT_SOLD_OUT</code></td><td>Not enough tickets available</td><td>Nên trả 409.</td></tr><tr><td><code>BOOKING_NOT_PAYABLE</code></td><td>Booking cannot be paid</td><td>Booking cancelled/not owned/not pending.</td></tr><tr><td><code>BOOKING_ALREADY_PAID</code></td><td>Booking is already paid</td><td>Idempotency cần thiết ở phase gateway thật.</td></tr><tr><td><code>BOOKING_NOT_CANCELLABLE</code></td><td>Only pending bookings can be cancelled</td><td>Cancel rule.</td></tr><tr><td><code>PAYMENT_DECLINED</code></td><td>Payment was declined</td><td>Dành cho gateway thật.</td></tr><tr><td><code>RATE_LIMITED</code></td><td>Too many requests</td><td>Khi bật rate limiting.</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Code</th><th>Message đề xuất</th><th>Ghi chú</th></tr></thead><tbody><tr><td><code>VALIDATION_ERROR</code></td><td>Validation failed</td><td>Kèm <code>errors[]</code>.</td></tr><tr><td><code>EMAIL_ALREADY_EXISTS</code></td><td>Email already exists</td><td>Register conflict.</td></tr><tr><td><code>INVALID_CREDENTIALS</code></td><td>Invalid email or password</td><td>Không tiết lộ email có tồn tại hay không.</td></tr><tr><td><code>UNAUTHENTICATED</code></td><td>Unauthorized</td><td>Token missing/invalid/expired.</td></tr><tr><td><code>FORBIDDEN</code></td><td>Forbidden</td><td>Role không đủ quyền.</td></tr><tr><td><code>RESOURCE_NOT_FOUND</code></td><td>Resource not found</td><td>Dùng cả khi user truy cập resource không thuộc mình.</td></tr><tr><td><code>EVENT_HAS_ACTIVE_BOOKINGS</code></td><td>Event has active bookings</td><td>Không hard delete event khi còn <code>PENDING</code> hoặc <code>PAID</code> bookings.</td></tr><tr><td><code>EVENT_SOLD_OUT</code></td><td>Not enough tickets available</td><td>Nên trả 409.</td></tr><tr><td><code>BOOKING_NOT_PAYABLE</code></td><td>Booking cannot be paid</td><td>Booking cancelled/not owned/not pending.</td></tr><tr><td><code>BOOKING_ALREADY_PAID</code></td><td>Booking is already paid</td><td>Idempotency cần thiết ở phase gateway thật.</td></tr><tr><td><code>BOOKING_NOT_CANCELLABLE</code></td><td>Only pending bookings can be cancelled</td><td>Cancel rule.</td></tr><tr><td><code>PAYMENT_DECLINED</code></td><td>Payment was declined</td><td>Dành cho gateway thật.</td></tr><tr><td><code>RATE_LIMITED</code></td><td>Too many requests</td><td>Khi bật rate limiting.</td></tr></tbody></table></div>
 <h3>Endpoint detail</h3>
 <h4>POST <code>/api/auth/register</code></h4>
 <p>Request:</p>
@@ -270,7 +266,41 @@
 <h4>DELETE <code>/api/events/{id}</code></h4>
 <p>Role: <code>ADMIN</code>.</p>
 <p>Success <code>204 No Content</code>.</p>
-<p>Errors: <code>401 UNAUTHENTICATED</code>, <code>403 FORBIDDEN</code>, <code>404 RESOURCE_NOT_FOUND</code>, <code>409 BUSINESS_RULE_VIOLATION</code> nếu event đã có paid booking và policy không cho xoá.</p>
+<p>Delete policy:</p>
+<ul>
+<li>Block delete when event has any active booking with status <code>PENDING</code> or <code>PAID</code>.</li>
+<li>Allow delete only when event has no bookings, or all bookings are terminal and no longer business-relevant after an explicit admin archival policy exists.</li>
+<li>Phase sau nên ưu tiên soft delete/cancel event thay vì hard delete để giữ lịch sử booking/ticket.</li>
+</ul>
+<p>Errors: <code>401 UNAUTHENTICATED</code>, <code>403 FORBIDDEN</code>, <code>404 RESOURCE_NOT_FOUND</code>, <code>409 EVENT_HAS_ACTIVE_BOOKINGS</code> nếu event có active bookings.</p>
+<h4>GET <code>/api/events/{id}/bookings</code></h4>
+<p>Phase: later admin reporting endpoint.</p>
+<p>Role: <code>ADMIN</code>.</p>
+<p>Query params:</p>
+<div class="table-wrap"><table><thead><tr><th>Param</th><th>Type</th><th>Required</th><th>Default</th><th>Notes</th></tr></thead><tbody><tr><td><code>page</code></td><td>integer</td><td>No</td><td>0</td><td>Zero-based.</td></tr><tr><td><code>size</code></td><td>integer</td><td>No</td><td>20</td><td>Max 100.</td></tr><tr><td><code>status</code></td><td>string</td><td>No</td><td>null</td><td>Optional <code>PENDING</code>, <code>PAID</code>, <code>CANCELLED</code>.</td></tr></tbody></table></div>
+<p>Success <code>200 OK</code>:</p>
+<pre class="code-block"><code>{
+  "success": true,
+  "message": "Event bookings retrieved successfully",
+  "data": {
+    "content": [
+      {
+        "bookingId": 501,
+        "userId": 12,
+        "userEmail": "jane@example.com",
+        "quantity": 2,
+        "totalPrice": 50.0,
+        "status": "PAID",
+        "createdAt": "2026-06-08T12:30:00Z"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}</code></pre>
+<p>Errors: <code>401 UNAUTHENTICATED</code>, <code>403 FORBIDDEN</code>, <code>404 RESOURCE_NOT_FOUND</code>, <code>422 VALIDATION_ERROR</code>.</p>
 <h4>POST <code>/api/bookings</code></h4>
 <p>Role: <code>USER</code>.</p>
 <p>Request:</p>
@@ -296,21 +326,29 @@
 <p>Errors: <code>401 UNAUTHENTICATED</code>, <code>404 RESOURCE_NOT_FOUND</code>, <code>409 EVENT_SOLD_OUT</code>, <code>422 VALIDATION_ERROR</code>.</p>
 <h4>GET <code>/api/bookings/my</code></h4>
 <p>Role: <code>USER</code>.</p>
+<p>Query params:</p>
+<div class="table-wrap"><table><thead><tr><th>Param</th><th>Type</th><th>Required</th><th>Default</th><th>Notes</th></tr></thead><tbody><tr><td><code>page</code></td><td>integer</td><td>No</td><td>0</td><td>Zero-based.</td></tr><tr><td><code>size</code></td><td>integer</td><td>No</td><td>10</td><td>Max 100.</td></tr><tr><td><code>status</code></td><td>string</td><td>No</td><td>null</td><td>Optional <code>PENDING</code>, <code>PAID</code>, <code>CANCELLED</code>.</td></tr></tbody></table></div>
 <p>Success <code>200 OK</code>:</p>
 <pre class="code-block"><code>{
   "success": true,
   "message": "Bookings retrieved successfully",
-  "data": [
-    {
-      "bookingId": 501,
-      "eventId": 101,
-      "eventTitle": "Art Exhibition",
-      "quantity": 2,
-      "totalPrice": 50.0,
-      "status": "PENDING",
-      "createdAt": "2026-06-08T12:30:00Z"
-    }
-  ]
+  "data": {
+    "content": [
+      {
+        "bookingId": 501,
+        "eventId": 101,
+        "eventTitle": "Art Exhibition",
+        "quantity": 2,
+        "totalPrice": 50.0,
+        "status": "PENDING",
+        "createdAt": "2026-06-08T12:30:00Z"
+      }
+    ],
+    "page": 0,
+    "size": 10,
+    "totalElements": 1,
+    "totalPages": 1
+  }
 }</code></pre>
 <p>Errors: <code>401 UNAUTHENTICATED</code>.</p>
 <h4>POST <code>/api/bookings/{id}/cancel</code></h4>
@@ -330,11 +368,9 @@
 <p>Request:</p>
 <pre class="code-block"><code>{
   "bookingId": 501,
-  "cardNumber": "4242 4242 4242 4242",
-  "expiry": "12/28",
-  "cvv": "123",
   "method": "MOCK_CARD"
 }</code></pre>
+<p>MVP mock payment không cần nhận raw card data. Nếu team muốn test form validation ở frontend, <code>cardNumber</code>, <code>expiry</code>, <code>cvv</code> chỉ được dùng cho <strong>format-only validation</strong> ở client hoặc trong một test-only DTO, không persist, không log và không gửi sang payment provider thật.</p>
 <p>Success <code>200 OK</code>:</p>
 <pre class="code-block"><code>{
   "success": true,
@@ -350,24 +386,32 @@
 <p>Errors: <code>401 UNAUTHENTICATED</code>, <code>404 RESOURCE_NOT_FOUND</code>, <code>409 BOOKING_ALREADY_PAID</code>, <code>409 BOOKING_NOT_PAYABLE</code>, <code>422 VALIDATION_ERROR</code>, <code>402 PAYMENT_DECLINED</code> khi có gateway thật.</p>
 <h4>GET <code>/api/tickets</code></h4>
 <p>Role: <code>USER</code>.</p>
+<p>Query params:</p>
+<div class="table-wrap"><table><thead><tr><th>Param</th><th>Type</th><th>Required</th><th>Default</th><th>Notes</th></tr></thead><tbody><tr><td><code>page</code></td><td>integer</td><td>No</td><td>0</td><td>Zero-based.</td></tr><tr><td><code>size</code></td><td>integer</td><td>No</td><td>10</td><td>Max 100.</td></tr><tr><td><code>status</code></td><td>string</td><td>No</td><td>null</td><td>Optional booking/ticket status filter.</td></tr></tbody></table></div>
 <p>Success <code>200 OK</code>:</p>
 <pre class="code-block"><code>{
   "success": true,
   "message": "Tickets retrieved successfully",
-  "data": [
-    {
-      "ticketId": 7001,
-      "ticketCode": "TICKET-A1B2C3D4",
-      "ticketType": "GENERAL",
-      "seatNumber": null,
-      "eventId": 101,
-      "eventTitle": "Art Exhibition",
-      "dateTime": "2026-07-12T10:00:00Z",
-      "location": "Modern Art Gallery, New York",
-      "quantity": 2,
-      "status": "PAID"
-    }
-  ]
+  "data": {
+    "content": [
+      {
+        "ticketId": 7001,
+        "ticketCode": "TICKET-A1B2C3D4",
+        "ticketType": "GENERAL",
+        "seatNumber": null,
+        "eventId": 101,
+        "eventTitle": "Art Exhibition",
+        "dateTime": "2026-07-12T10:00:00Z",
+        "location": "Modern Art Gallery, New York",
+        "quantity": 2,
+        "status": "PAID"
+      }
+    ],
+    "page": 0,
+    "size": 10,
+    "totalElements": 1,
+    "totalPages": 1
+  }
 }</code></pre>
 <p>Errors: <code>401 UNAUTHENTICATED</code>.</p>
 <h4>GET <code>/api/users/profile</code></h4>
@@ -408,7 +452,6 @@
   }
 }</code></pre>
 <p>Errors: <code>401 UNAUTHENTICATED</code>, <code>422 VALIDATION_ERROR</code>.</p>
-
 </section>
 <section id="6-data-model-muc-tieu" class="section"><h2>6. Data model mục tiêu</h2>
 <h3>users</h3>
@@ -423,7 +466,9 @@
 <div class="table-wrap"><table><thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Phase</th><th>Notes</th></tr></thead><tbody><tr><td><code>id</code></td><td>bigint</td><td>Yes</td><td>MVP</td><td>Primary key.</td></tr><tr><td><code>ticket_code</code></td><td>varchar unique</td><td>Yes</td><td>MVP</td><td>Human-readable code.</td></tr><tr><td><code>booking_id</code></td><td>bigint</td><td>Yes</td><td>MVP</td><td>Source booking.</td></tr><tr><td><code>ticket_type</code></td><td>varchar</td><td>No</td><td>Phase 4</td><td><code>GENERAL</code>, <code>VIP</code>, <code>EARLY_BIRD</code>. Default <code>GENERAL</code>.</td></tr><tr><td><code>seat_number</code></td><td>varchar</td><td>No</td><td>Phase 4</td><td>Nullable until seat map exists.</td></tr><tr><td><code>qr_payload</code></td><td>text</td><td>No</td><td>Phase 4</td><td>For QR check-in.</td></tr><tr><td><code>check_in_status</code></td><td>varchar</td><td>No</td><td>Phase 4</td><td><code>UNUSED</code>, <code>CHECKED_IN</code>, <code>REVOKED</code>.</td></tr><tr><td><code>created_at</code></td><td>timestamp</td><td>Yes</td><td>Phase 2</td><td>Audit.</td></tr></tbody></table></div>
 <h3>reminders</h3>
 <div class="table-wrap"><table><thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr></thead><tbody><tr><td><code>id</code></td><td>bigint</td><td>Yes</td><td>Primary key.</td></tr><tr><td><code>user_id</code></td><td>bigint</td><td>Yes</td><td>One reminder setting per user.</td></tr><tr><td><code>event_reminder</code></td><td>boolean</td><td>Yes</td><td>Enable/disable.</td></tr><tr><td><code>created_at</code></td><td>timestamp</td><td>Yes</td><td>Audit.</td></tr><tr><td><code>updated_at</code></td><td>timestamp</td><td>Yes</td><td>Audit.</td></tr></tbody></table></div>
-
+<h3>favorites</h3>
+<div class="table-wrap"><table><thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Phase</th><th>Notes</th></tr></thead><tbody><tr><td><code>id</code></td><td>bigint</td><td>Yes</td><td>MVP extension</td><td>Primary key.</td></tr><tr><td><code>user_id</code></td><td>bigint</td><td>Yes</td><td>MVP extension</td><td>Owner.</td></tr><tr><td><code>event_id</code></td><td>bigint</td><td>Yes</td><td>MVP extension</td><td>Favorited event.</td></tr><tr><td><code>created_at</code></td><td>timestamp</td><td>Yes</td><td>Phase 2</td><td>Audit.</td></tr></tbody></table></div>
+<p>Constraint: unique <code>(user_id, event_id)</code> để toggle favorite idempotent và tránh duplicate wishlist rows.</p>
 </section>
 <section id="7-frontend-react-specification" class="section"><h2>7. Frontend React specification</h2>
 <h3>Stack</h3>
@@ -434,7 +479,7 @@
 <li>Zustand hoặc Context API cho auth state.</li>
 <li>React Hook Form cho form state/validation.</li>
 <li>Tailwind CSS, CSS Modules hoặc SCSS.</li>
-<li>LocalStorage cho MVP token storage; production nên cân nhắc HttpOnly cookie nếu có backend support.</li>
+<li>LocalStorage có thể dùng cho MVP token storage nếu cần triển khai nhanh, nhưng phải ghi nhận rủi ro XSS đọc token. Frontend cần sanitize user-controlled content, tránh <code>dangerouslySetInnerHTML</code>, bật CSP khi deploy và cân nhắc HttpOnly cookie khi có refresh token flow.</li>
 </ul>
 <h3>Routes</h3>
 <div class="table-wrap"><table><thead><tr><th>Route</th><th>Access</th><th>Screen</th></tr></thead><tbody><tr><td><code>/</code></td><td>Public</td><td>Event listing.</td></tr><tr><td><code>/events/:id</code></td><td>Public</td><td>Event detail.</td></tr><tr><td><code>/login</code></td><td>Public only</td><td>Login.</td></tr><tr><td><code>/register</code></td><td>Public only</td><td>Register.</td></tr><tr><td><code>/bookings/checkout/:eventId</code></td><td>User</td><td>Booking confirmation.</td></tr><tr><td><code>/payments/:bookingId</code></td><td>User</td><td>Payment.</td></tr><tr><td><code>/tickets</code></td><td>User</td><td>My tickets/bookings.</td></tr><tr><td><code>/profile</code></td><td>User</td><td>Profile and reminder settings.</td></tr><tr><td><code>/admin/events</code></td><td>Admin</td><td>Event management.</td></tr><tr><td><code>/admin/events/new</code></td><td>Admin</td><td>Create event.</td></tr><tr><td><code>/admin/events/:id/edit</code></td><td>Admin</td><td>Edit event.</td></tr></tbody></table></div>
@@ -487,7 +532,6 @@ Success state -&gt; [View my tickets]</code></pre>
 <pre class="code-block"><code>[Create event]
 Table: title | date | location | price | available | actions
 Actions: edit, delete</code></pre>
-
 </section>
 <section id="8-sequence-diagrams" class="section"><h2>8. Sequence diagrams</h2>
 <h3>React auth sequence</h3>
@@ -525,7 +569,7 @@ Actions: edit, delete</code></pre>
   React--&gt;&gt;User: Show payment form
   User-&gt;&gt;React: Submit payment
   React-&gt;&gt;ApiClient: POST /api/payments
-  ApiClient-&gt;&gt;PaymentAPI: bookingId + mock card
+  ApiClient-&gt;&gt;PaymentAPI: bookingId + method
   PaymentAPI--&gt;&gt;React: payment PAID + ticketCode
   React-&gt;&gt;ApiClient: GET /api/tickets
   ApiClient-&gt;&gt;TicketAPI: request tickets
@@ -569,7 +613,7 @@ Actions: edit, delete</code></pre>
   else sold out
     BookingService--&gt;&gt;UserB: 409 EVENT_SOLD_OUT
   end</pre>
-
+<p>Concurrency note: Mermaid sequence diagram vẫn biểu diễn các bước theo thứ tự, nên nó chỉ minh hoạ điểm đặt lock/version-check chứ không chứng minh an toàn race condition. Implementation cần một trong ba chiến lược: pessimistic lock row <code>events</code> khi tính vé còn lại, optimistic locking bằng <code>version</code> và retry có giới hạn, hoặc bảng inventory/seat hold riêng với unique constraints. Acceptance test phải có concurrent booking test để xác nhận không oversell.</p>
 </section>
 <section id="9-non-functional-requirements" class="section"><h2>9. Non-functional requirements</h2>
 <h3>Performance</h3>
@@ -596,7 +640,8 @@ Actions: edit, delete</code></pre>
 <p>- Booking/payment endpoints: conservative per-user limit to reduce abuse.</p>
 <ul>
 <li>Secrets such as DB password and JWT secret must come from environment variables or secret manager, not committed properties files.</li>
-<li>Do not persist raw card number, expiry or CVV. Payment mock may validate format only.</li>
+<li>Payment mock must not require, persist or log raw card number, expiry or CVV. If card fields are used only for UI validation experiments, validation must be format-only and test-only.</li>
+<li>LocalStorage token storage is acceptable only as an MVP trade-off. Because XSS can read LocalStorage, frontend must sanitize user input/output, avoid unsafe HTML injection, consider CSP, and move to HttpOnly cookie/refresh-token flow for production.</li>
 <li>Admin seed must be disabled by default and guarded by <code>spring.profiles.active=dev,test</code> plus <code>app.admin.seed=true</code>; app should refuse seed when active profile is <code>prod</code>.</li>
 </ul>
 <h3>Deployment environments</h3>
@@ -612,7 +657,6 @@ Actions: edit, delete</code></pre>
 <li>Log booking/payment status transitions with booking id and user id.</li>
 <li>Track metrics for request count, latency, error rate, booking conversion and payment success.</li>
 </ul>
-
 </section>
 <section id="10-hien-trang-codebase-backend" class="section"><h2>10. Hiện trạng codebase backend</h2>
 <p>Codebase hiện tại là Spring Boot backend với Maven, Spring Web, Spring Security, Spring Data JPA, JWT, Validation, Lombok, MySQL runtime và H2 test.</p>
@@ -629,49 +673,19 @@ Actions: edit, delete</code></pre>
 <li>Main config không nên chứa secret local hard-coded.</li>
 <li>Build/test phụ thuộc JDK target; môi trường dev cần thống nhất JDK theo <code>pom.xml</code>.</li>
 </ul>
-
 </section>
 <section id="11-risk-management" class="section"><h2>11. Risk management</h2>
 <div class="table-wrap"><table><thead><tr><th>Risk</th><th>Severity</th><th>Impact</th><th>Mitigation</th></tr></thead><tbody><tr><td>Auth username/email ambiguity</td><td>High</td><td>Frontend/backend tích hợp sai contract.</td><td>Đã chốt email-first trong PRD; Phase 1 migrate backend DTO/service/tests.</td></tr><tr><td>Race condition khi nhiều user đặt cùng event hot</td><td>High</td><td>Oversell, mất uy tín, khó refund.</td><td>Thêm pessimistic/optimistic locking hoặc inventory table trước public launch; test concurrent booking.</td></tr><tr><td>Admin seed bật nhầm production</td><td>High</td><td>Tạo tài khoản admin mặc định ngoài môi trường an toàn.</td><td><code>app.admin.seed=false</code> mặc định, chỉ cho <code>dev/test</code>, app fail-fast nếu seed true trên <code>prod</code>.</td></tr><tr><td>Payment mock bị hiểu nhầm là payment thật</td><td>Medium</td><td>Sai kỳ vọng nghiệp vụ và bảo mật card.</td><td>Gắn nhãn mock rõ ràng, không lưu raw card, phase gateway riêng.</td></tr><tr><td>Response shape không thống nhất</td><td>Medium</td><td>Frontend phải xử lý nhiều kiểu response.</td><td>Chuẩn hoá envelope/error catalog trước khi frontend bắt đầu.</td></tr><tr><td>Frontend chưa triển khai</td><td>Medium</td><td>Chưa demo được user journey end-to-end.</td><td>Scaffold React sau khi API contract ổn định.</td></tr><tr><td>Hard-coded local secrets</td><td>Medium</td><td>Rủi ro lộ credential và khó deploy.</td><td>Dùng env vars, profile-specific config, không commit secret thật.</td></tr></tbody></table></div>
-
 </section>
 <section id="12-roadmap-uu-tien" class="section"><h2>12. Roadmap ưu tiên</h2>
 <h3>Phase 1 - Ngay</h3>
-<ul>
-<li>Migrate auth sang email-first contract.</li>
-<li>Chuẩn hoá response envelope và error catalog.</li>
-<li>Thêm request/response tests cho các API chính.</li>
-<li>Guard admin seed bằng profile dev/test.</li>
-<li>Loại bỏ secret hard-coded khỏi main config.</li>
-<li>Thêm locking hoặc version field để chống oversell booking.</li>
-</ul>
+<div class="table-wrap"><table><thead><tr><th>Effort</th><th>Item</th></tr></thead><tbody><tr><td>M</td><td>Migrate auth sang email-first contract.</td></tr><tr><td>M</td><td>Chuẩn hoá response envelope và error catalog.</td></tr><tr><td>S</td><td>Payment mock chỉ nhận <code>bookingId</code> và <code>method</code>, không nhận raw card data.</td></tr><tr><td>M</td><td>Thêm request/response tests cho các API chính.</td></tr><tr><td>S</td><td>Guard admin seed bằng profile dev/test.</td></tr><tr><td>S</td><td>Loại bỏ secret hard-coded khỏi main config.</td></tr><tr><td>M/L</td><td>Thêm locking hoặc version field để chống oversell booking và test concurrent booking.</td></tr></tbody></table></div>
 <h3>Phase 2 - Đồng bộ API/data model</h3>
-<ul>
-<li>Thêm <code>imageUrl</code>, <code>latitude</code>, <code>longitude</code>, <code>createdAt</code>, <code>updatedAt</code> cho events.</li>
-<li>Thêm popular/nearby filters.</li>
-<li>Thêm status/error code đầy đủ cho booking/payment.</li>
-<li>Bổ sung ticket fields nullable: <code>ticketType</code>, <code>seatNumber</code>.</li>
-<li>Chuẩn hoá Swagger/OpenAPI hoặc API docs từ contract này.</li>
-</ul>
+<div class="table-wrap"><table><thead><tr><th>Effort</th><th>Item</th></tr></thead><tbody><tr><td>M</td><td>Thêm <code>imageUrl</code>, <code>latitude</code>, <code>longitude</code>, <code>createdAt</code>, <code>updatedAt</code> cho events.</td></tr><tr><td>M</td><td>Thêm popular/nearby filters.</td></tr><tr><td>S</td><td>Thêm pagination cho <code>GET /api/bookings/my</code> và <code>GET /api/tickets</code>.</td></tr><tr><td>S</td><td>Thêm <code>GET /api/events/{id}/bookings</code> cho admin xem booking theo event.</td></tr><tr><td>S</td><td>Thêm status/error code đầy đủ cho booking/payment.</td></tr><tr><td>S</td><td>Bổ sung ticket fields nullable: <code>ticketType</code>, <code>seatNumber</code>.</td></tr><tr><td>M</td><td>Xuất OpenAPI/Swagger YAML từ Section 5 để backend/frontend dùng chung contract và hỗ trợ client generation.</td></tr></tbody></table></div>
 <h3>Phase 3 - React MVP</h3>
-<ul>
-<li>Scaffold React + Vite.</li>
-<li>Tạo API client, auth store, route guards.</li>
-<li>Tạo event listing/detail với loading/empty/error states.</li>
-<li>Tạo booking/payment/tickets/profile flows.</li>
-<li>Tạo admin event management.</li>
-</ul>
+<div class="table-wrap"><table><thead><tr><th>Effort</th><th>Item</th></tr></thead><tbody><tr><td>S</td><td>Scaffold React + Vite.</td></tr><tr><td>M</td><td>Tạo API client, auth store, route guards.</td></tr><tr><td>M</td><td>Tạo event listing/detail với loading/empty/error states.</td></tr><tr><td>M</td><td>Tạo booking/payment/tickets/profile flows.</td></tr><tr><td>M</td><td>Tạo admin event management.</td></tr></tbody></table></div>
 <h3>Phase 4 - Product extensions</h3>
-<ul>
-<li>Favorite UI.</li>
-<li>QR ticket check-in.</li>
-<li>Email/push reminders.</li>
-<li>Refund/cancel paid booking.</li>
-<li>Admin analytics.</li>
-<li>Upload event/avatar images.</li>
-<li>Payment gateway sandbox.</li>
-</ul>
-
+<div class="table-wrap"><table><thead><tr><th>Effort</th><th>Item</th></tr></thead><tbody><tr><td>S</td><td>Favorite UI.</td></tr><tr><td>L</td><td>QR ticket check-in.</td></tr><tr><td>M/L</td><td>Email/push reminders.</td></tr><tr><td>L</td><td>Refund/cancel paid booking.</td></tr><tr><td>M</td><td>Admin analytics.</td></tr><tr><td>M</td><td>Upload event/avatar images.</td></tr><tr><td>L</td><td>Payment gateway sandbox.</td></tr></tbody></table></div>
 </section>
 <section id="13-acceptance-criteria" class="section"><h2>13. Acceptance criteria</h2>
 <p>PRD được xem là đủ dùng cho triển khai tiếp khi:</p>
@@ -682,8 +696,13 @@ Actions: edit, delete</code></pre>
 <li>Có frontend routes, component breakdown, UI states và auth state flow.</li>
 <li>Có NFR cho performance, concurrency, security, deploy environments.</li>
 <li>Có data model fields và phase bổ sung cho event image/GPS, ticket type/seat.</li>
+<li>Có <code>favorites</code> schema hoặc phase note rõ ràng.</li>
+<li>Payment mock không yêu cầu raw card data và có caveat format-only nếu test validation.</li>
+<li>Bookings/tickets list endpoints có pagination contract.</li>
+<li>Token storage có caveat XSS khi dùng LocalStorage.</li>
+<li>Delete event policy rõ khi có active bookings.</li>
 <li>Có sequence diagram từ góc độ React tới API.</li>
 <li>Có risk severity đúng cho race condition và admin seed.</li>
+<li>Roadmap có effort estimate và OpenAPI/Swagger export item.</li>
 </ul>
-</section>
-<footer class="section"><p><strong>Event Booking App PRD</strong> - generated from PRD.md.</p></footer><script>if(window.mermaid){mermaid.initialize({startOnLoad:true,theme:'default'});}</script></body></html>
+</section><footer class="section"><p><strong>Event Booking App PRD</strong> - generated from PRD.md.</p></footer><script>if(window.mermaid){mermaid.initialize({startOnLoad:true,theme:'default'});}</script></body></html>
