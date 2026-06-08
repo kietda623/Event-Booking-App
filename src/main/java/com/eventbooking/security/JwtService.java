@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 
@@ -15,12 +16,12 @@ public class JwtService {
     @Value("${app.jwt.secret}")
     private String secret;
 
-    @Value("${app.jwt.expiration}")
-    private long expirationMs;
+    @Value("${app.jwt.expiry-minutes:1440}")
+    private long expiryMinutes;
 
     public String generateToken(String subject) {
         Date now = new Date();
-        Date expiresAt = new Date(now.getTime() + expirationMs);
+        Date expiresAt = Date.from(now.toInstant().plus(accessTokenDuration()));
 
         return Jwts.builder()
                 .subject(subject)
@@ -52,7 +53,11 @@ public class JwtService {
     }
 
     public Instant expiresAtFromNow() {
-        return Instant.now().plusMillis(expirationMs);
+        return Instant.now().plus(accessTokenDuration());
+    }
+
+    public Duration accessTokenDuration() {
+        return Duration.ofMinutes(expiryMinutes);
     }
 
     private SecretKey signingKey() {

@@ -17,6 +17,8 @@ import com.eventbooking.repository.TicketRepository;
 import com.eventbooking.repository.UserRepository;
 import com.eventbooking.service.BookingService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -28,6 +30,7 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 public class BookingServiceImpl implements BookingService {
+    private static final Logger log = LoggerFactory.getLogger(BookingServiceImpl.class);
     private final BookingRepository bookingRepository;
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
@@ -78,12 +81,17 @@ public class BookingServiceImpl implements BookingService {
             throw new BusinessException("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled", HttpStatus.CONFLICT);
         }
         if ("PENDING".equals(booking.getStatus())) {
-            booking.setStatus("CANCELLED");
-            return toResponse(bookingRepository.save(booking));
-        }
-        if ("PAID".equals(booking.getStatus())) {
+            String oldStatus = booking.getStatus();
             booking.setStatus("CANCELLED");
             Booking saved = bookingRepository.save(booking);
+            logStatusTransition(saved, oldStatus, saved.getStatus());
+            return toResponse(saved);
+        }
+        if ("PAID".equals(booking.getStatus())) {
+            String oldStatus = booking.getStatus();
+            booking.setStatus("CANCELLED");
+            Booking saved = bookingRepository.save(booking);
+            logStatusTransition(saved, oldStatus, saved.getStatus());
 
             Refund refund = new Refund();
             refund.setBookingId(saved.getId());
@@ -108,8 +116,11 @@ public class BookingServiceImpl implements BookingService {
         if (!"PENDING".equals(booking.getStatus())) {
             throw new BusinessException("BOOKING_NOT_PENDING", "Only pending bookings can be cancelled", HttpStatus.CONFLICT);
         }
+        String oldStatus = booking.getStatus();
         booking.setStatus("CANCELLED");
-        return toResponse(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+        logStatusTransition(saved, oldStatus, saved.getStatus());
+        return toResponse(saved);
     }
 
     public Booking findOwnedBooking(Long id) {
@@ -153,5 +164,14 @@ public class BookingServiceImpl implements BookingService {
                 page.getTotalElements(),
                 page.getTotalPages()
         );
+    }
+
+    private void logStatusTransition(Booking booking, String oldStatus, String newStatus) {
+        log.info("booking_status_transition bookingId={} userId={} oldStatus={} newStatus={} timestamp={}",
+                booking.getId(),
+                booking.getUser().getId(),
+                oldStatus,
+                newStatus,
+                LocalDateTime.now());
     }
 }

@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { eventsApi } from '../../api/events'
 import { favoritesApi } from '../../api/favorites'
-import { EmptyState, ErrorState, LoadingState } from '../../components/StateViews'
+import { EmptyState, ErrorState } from '../../components/StateViews'
 import { EventCard } from '../../components/EventCard'
 import { Pagination } from '../../components/Pagination'
+import { EventGridSkeleton } from '../../components/Skeletons'
 import { useAuthStore } from '../../store/authStore'
 
 const filters = [
@@ -15,18 +16,19 @@ const filters = [
 
 export function EventsPage() {
   const queryClient = useQueryClient()
-  const token = useAuthStore((state) => state.token)
+  const user = useAuthStore((state) => state.user)
   const [type, setType] = useState('')
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const query = useQuery({
     queryKey: ['events', type, page],
     queryFn: () => eventsApi.list({ type: type || undefined, page, size: 9 }),
+    staleTime: 60000,
   })
   const favoritesQuery = useQuery({
     queryKey: ['favorites', 'ids'],
     queryFn: () => favoritesApi.list({ page: 0, size: 100 }),
-    enabled: Boolean(token),
+    enabled: Boolean(user),
   })
   const favoriteMutation = useMutation({
     mutationFn: ({ eventId, favorited }) => (favorited ? favoritesApi.remove(eventId) : favoritesApi.add(eventId)),
@@ -76,7 +78,7 @@ export function EventsPage() {
           </button>
         ))}
       </div>
-      {query.isLoading && <LoadingState label="Loading events..." />}
+      {query.isLoading && <EventGridSkeleton count={9} />}
       {query.isError && <ErrorState error={query.error} title="Could not load events" />}
       {!query.isLoading && !query.isError && filteredEvents.length === 0 && <EmptyState title="No events found" />}
       {!query.isLoading && !query.isError && filteredEvents.length > 0 && (
@@ -89,7 +91,7 @@ export function EventsPage() {
                 isFavorited={favoriteIds.has(event.id)}
                 favoriteBusy={favoriteMutation.isPending}
                 onFavoriteToggle={
-                  token
+                  user
                     ? (selected) =>
                         favoriteMutation.mutate({
                           eventId: selected.id,

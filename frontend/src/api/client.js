@@ -1,17 +1,8 @@
 import axios from 'axios'
 
-export const TOKEN_KEY = 'eventBookingToken'
-
 const client = axios.create({
   baseURL: 'http://localhost:8080/api',
-})
-
-client.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY)
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
+  withCredentials: true,
 })
 
 client.interceptors.response.use(
@@ -22,7 +13,36 @@ client.interceptors.response.use(
     }
     return payload?.data ?? payload
   },
-  (error) => {
+  async (error) => {
+    const status = error.response?.status
+    const originalRequest = error.config || {}
+    if (status >= 400) {
+      console.error('API error', {
+        endpoint: originalRequest.url,
+        status,
+      })
+    }
+
+    if (
+      status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes('/auth/login') &&
+      !originalRequest.url?.includes('/auth/refresh') &&
+      !originalRequest.url?.includes('/auth/logout')
+    ) {
+      originalRequest._retry = true
+      try {
+        await client.post('/auth/refresh')
+        return client(originalRequest)
+      } catch (refreshError) {
+        localStorage.removeItem('eventBookingAuth')
+        if (window.location.pathname !== '/login') {
+          window.location.assign('/login')
+        }
+        return Promise.reject(refreshError.response?.data || refreshError)
+      }
+    }
+
     if (error.response?.data) {
       return Promise.reject(error.response.data)
     }

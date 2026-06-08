@@ -1,7 +1,9 @@
 package com.eventbooking.config;
 
 import com.eventbooking.dto.common.ApiResponse;
+import com.eventbooking.security.CookieAuthFilter;
 import com.eventbooking.security.JwtAuthenticationFilter;
+import com.eventbooking.security.RateLimitingFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,10 +20,19 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtFilter;
+    private final CookieAuthFilter cookieAuthFilter;
+    private final RateLimitingFilter rateLimitingFilter;
     private final ObjectMapper objectMapper;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtFilter, ObjectMapper objectMapper) {
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtFilter,
+            CookieAuthFilter cookieAuthFilter,
+            RateLimitingFilter rateLimitingFilter,
+            ObjectMapper objectMapper
+    ) {
         this.jwtFilter = jwtFilter;
+        this.cookieAuthFilter = cookieAuthFilter;
+        this.rateLimitingFilter = rateLimitingFilter;
         this.objectMapper = objectMapper;
     }
 
@@ -29,6 +40,7 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+                .cors(cors -> {})
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -48,6 +60,9 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/api/**").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/metrics").permitAll()
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/events/*/bookings").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/admin/**").hasRole("ADMIN")
@@ -60,7 +75,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/events/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(cookieAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

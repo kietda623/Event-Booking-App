@@ -17,7 +17,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "favorites",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "event_id"})
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "event_id"}),
+        indexes = @jakarta.persistence.Index(name = "idx_favorites_user_event", columnList = "user_id,event_id")
 )
 @Data
 @NoArgsConstructor

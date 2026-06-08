@@ -11,9 +11,18 @@ import java.util.List;
 import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
-    Page<Booking> findByUserEmailOrderByBookingDateDesc(String email, Pageable pageable);
+    @Query(
+            value = "select b from Booking b where b.user.email = :email order by b.bookingDate desc",
+            countQuery = "select count(b) from Booking b where b.user.email = :email"
+    )
+    Page<Booking> findByUserEmailOrderByBookingDateDesc(@Param("email") String email, Pageable pageable);
     Optional<Booking> findByIdAndUserEmail(Long id, String email);
-    Page<Booking> findByEventIdOrderByBookingDateDesc(Long eventId, Pageable pageable);
+
+    @Query(
+            value = "select b from Booking b where b.event.id = :eventId order by b.bookingDate desc",
+            countQuery = "select count(b) from Booking b where b.event.id = :eventId"
+    )
+    Page<Booking> findByEventIdOrderByBookingDateDesc(@Param("eventId") Long eventId, Pageable pageable);
 
     @Query("select coalesce(sum(b.quantity), 0) from Booking b where b.event.id = :eventId and b.status <> 'CANCELLED'")
     Long sumBookedQuantityByEventId(@Param("eventId") Long eventId);

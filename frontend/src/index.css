@@ -640,6 +640,61 @@ code {
   padding: 12px;
 }
 
+.skeleton-card {
+  pointer-events: none;
+}
+
+.skeleton-block,
+.skeleton-line,
+.skeleton-button {
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #e5ebf0;
+}
+
+.skeleton-block::after,
+.skeleton-line::after,
+.skeleton-button::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: shimmer 1.4s infinite;
+}
+
+.skeleton-block.image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.skeleton-line {
+  width: 100%;
+  height: 14px;
+  margin: 8px 0;
+}
+
+.skeleton-line.short {
+  width: 42%;
+}
+
+.skeleton-line.title {
+  width: 72%;
+  height: 22px;
+}
+
+.skeleton-button {
+  width: 72px;
+  height: 32px;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 @media (max-width: 900px) {
   .topbar {
     grid-template-columns: 1fr;

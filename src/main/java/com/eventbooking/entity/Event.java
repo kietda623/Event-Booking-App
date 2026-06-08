@@ -8,7 +8,10 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "events")
+@Table(
+        name = "events",
+        indexes = @Index(name = "idx_events_start_time", columnList = "event_date")
+)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -24,6 +27,7 @@ public class Event {
 
     private String location;
 
+    @Column(name = "event_date")
     private LocalDateTime eventDate;
 
     private Integer totalTickets;

@@ -2,10 +2,9 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 
 export function AdminRoute() {
-  const token = useAuthStore((state) => state.token)
   const user = useAuthStore((state) => state.user)
 
-  if (!token) {
+  if (!user) {
     return <Navigate to="/login" replace />
   }
 

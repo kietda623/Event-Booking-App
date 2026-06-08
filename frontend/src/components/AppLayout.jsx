@@ -1,13 +1,18 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { authApi } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
 
 export function AppLayout() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
-  const token = useAuthStore((state) => state.token)
   const logout = useAuthStore((state) => state.logout)
 
-  const onLogout = () => {
+  const onLogout = async () => {
+    try {
+      await authApi.logout()
+    } catch {
+      // Local logout still proceeds if the session already expired.
+    }
     logout()
     navigate('/')
   }
@@ -20,16 +25,16 @@ export function AppLayout() {
         </Link>
         <nav className="nav-links" aria-label="Primary navigation">
           <NavLink to="/">Events</NavLink>
-          {token && <NavLink to="/favorites">Favorites</NavLink>}
-          {token && <NavLink to="/bookings">Bookings</NavLink>}
-          {token && <NavLink to="/tickets">Tickets</NavLink>}
-          {token && <NavLink to="/profile">Profile</NavLink>}
+          {user && <NavLink to="/favorites">Favorites</NavLink>}
+          {user && <NavLink to="/bookings">Bookings</NavLink>}
+          {user && <NavLink to="/tickets">Tickets</NavLink>}
+          {user && <NavLink to="/profile">Profile</NavLink>}
           {user?.role === 'ADMIN' && <NavLink to="/admin/events">Admin Events</NavLink>}
           {user?.role === 'ADMIN' && <NavLink to="/admin/checkin">Check-in</NavLink>}
           {user?.role === 'ADMIN' && <NavLink to="/admin/analytics">Analytics</NavLink>}
         </nav>
         <div className="topbar-actions">
-          {token ? (
+          {user ? (
             <>
               <span className="user-chip">{user?.fullName || user?.email || 'User'}</span>
               <button className="button ghost" type="button" onClick={onLogout}>

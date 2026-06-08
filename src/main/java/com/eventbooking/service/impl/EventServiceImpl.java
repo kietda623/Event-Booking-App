@@ -12,6 +12,8 @@ import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.EventRepository;
 import com.eventbooking.service.EventService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -29,6 +31,10 @@ public class EventServiceImpl implements EventService {
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("id", "title", "eventDate", "location", "ticketPrice");
 
     @Override
+    @Cacheable(
+            value = "events",
+            key = "{#type, #latitude, #longitude, #search, #upcoming, #page, #size, #sortBy, #sortDir}"
+    )
     public PageResponse<EventResponse> getAll(String type, Double latitude, Double longitude, String search,
                                               boolean upcoming, int page, int size, String sortBy, String sortDir) {
         int safePage = Math.max(page, 0);
@@ -71,6 +77,7 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
+    @CacheEvict(value = "events", allEntries = true)
     public EventResponse create(EventRequest request) {
         Event event = new Event();
         apply(event, request);
@@ -78,6 +85,7 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
+    @CacheEvict(value = "events", allEntries = true)
     public EventResponse update(Long id, EventRequest request) {
         Event event = findEvent(id);
         apply(event, request);
@@ -85,6 +93,7 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
+    @CacheEvict(value = "events", allEntries = true)
     public void delete(Long id) {
         Event event = findEvent(id);
         eventRepository.delete(event);

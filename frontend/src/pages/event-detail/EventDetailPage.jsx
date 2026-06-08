@@ -13,15 +13,16 @@ const FALLBACK_IMAGE =
 export function EventDetailPage() {
   const { id } = useParams()
   const queryClient = useQueryClient()
-  const token = useAuthStore((state) => state.token)
+  const user = useAuthStore((state) => state.user)
   const query = useQuery({
     queryKey: ['event', id],
     queryFn: () => eventsApi.get(id),
+    staleTime: 60000,
   })
   const favoritesQuery = useQuery({
     queryKey: ['favorites', 'ids'],
     queryFn: () => favoritesApi.list({ page: 0, size: 100 }),
-    enabled: Boolean(token),
+    enabled: Boolean(user),
   })
   const favoriteMutation = useMutation({
     mutationFn: ({ eventId, favorited }) => (favorited ? favoritesApi.remove(eventId) : favoritesApi.add(eventId)),
@@ -45,7 +46,7 @@ export function EventDetailPage() {
         <p className="eyebrow">{formatDateTime(event.eventDate)}</p>
         <div className="title-row">
           <h1>{event.title}</h1>
-          {token && (
+          {user && (
             <FavoriteButton
               active={isFavorited}
               disabled={favoriteMutation.isPending}
@@ -69,12 +70,12 @@ export function EventDetailPage() {
             <dd>{event.availableTickets ?? 0}</dd>
           </div>
         </dl>
-        {token && (
+        {user && (
           <Link className="button primary" to={`/events/${event.id}/book`}>
             Book Now
           </Link>
         )}
-        {!token && (
+        {!user && (
           <Link className="button primary" to="/login">
             Login to book
           </Link>

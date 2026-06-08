@@ -8,7 +8,10 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "tickets")
+@Table(
+        name = "tickets",
+        indexes = @Index(name = "idx_tickets_user", columnList = "user_id")
+)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -32,6 +35,10 @@ public class Ticket {
     @ManyToOne
     @JoinColumn(name = "booking_id")
     private Booking booking;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 
     @PrePersist
     void prePersist() {

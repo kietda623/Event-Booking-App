@@ -37,7 +37,7 @@ public class TicketController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        Page<TicketResponse> tickets = ticketRepository.findByBookingUserEmailOrderByIdDesc(
+        Page<TicketResponse> tickets = ticketRepository.findByUserEmailOrderByIdDesc(
                 currentEmail(),
                 PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
         ).map(this::toResponse);

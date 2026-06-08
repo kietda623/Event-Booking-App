@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { bookingsApi } from '../../api/bookings'
 import { CancelBookingButton } from '../../components/CancelBookingButton'
-import { EmptyState, ErrorState, LoadingState } from '../../components/StateViews'
+import { EmptyState, ErrorState } from '../../components/StateViews'
 import { Pagination } from '../../components/Pagination'
+import { BookingListSkeleton } from '../../components/Skeletons'
 import { StatusBadge } from '../../components/StatusBadge'
 import { formatCurrency, formatDateTime } from '../../utils/format'
 
@@ -15,7 +16,7 @@ export function BookingsPage() {
     queryFn: () => bookingsApi.mine({ page, size: 10 }),
   })
 
-  if (query.isLoading) return <LoadingState label="Loading bookings..." />
+  if (query.isLoading) return <BookingListSkeleton rows={6} />
   if (query.isError) return <ErrorState error={query.error} title="Could not load bookings" />
 
   const bookings = query.data?.content || []

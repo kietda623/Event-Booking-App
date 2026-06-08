@@ -12,6 +12,8 @@ import com.eventbooking.repository.PaymentRepository;
 import com.eventbooking.repository.TicketRepository;
 import com.eventbooking.service.PaymentService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
+    private static final Logger log = LoggerFactory.getLogger(PaymentServiceImpl.class);
     private final BookingRepository bookingRepository;
     private final PaymentRepository paymentRepository;
     private final TicketRepository ticketRepository;
@@ -45,12 +48,15 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setStatus("PAID");
         payment.setPaymentDate(LocalDateTime.now());
 
+        String oldStatus = booking.getStatus();
         booking.setStatus("PAID");
         bookingRepository.save(booking);
+        logStatusTransition(booking, oldStatus, booking.getStatus());
         Payment saved = paymentRepository.save(payment);
 
         Ticket ticket = new Ticket();
         ticket.setBooking(booking);
+        ticket.setUser(booking.getUser());
         ticket.setTicketCode(UUID.randomUUID().toString());
         ticket.setTicketType("GENERAL");
         ticket.setStatus("ACTIVE");
@@ -94,5 +100,14 @@ public class PaymentServiceImpl implements PaymentService {
 
     private String currentEmail() {
         return SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
+    private void logStatusTransition(Booking booking, String oldStatus, String newStatus) {
+        log.info("booking_status_transition bookingId={} userId={} oldStatus={} newStatus={} timestamp={}",
+                booking.getId(),
+                booking.getUser().getId(),
+                oldStatus,
+                newStatus,
+                LocalDateTime.now());
     }
 }
