@@ -7,6 +7,12 @@ import com.eventbooking.entity.Payment;
 import com.eventbooking.entity.Ticket;
 import com.eventbooking.exception.BusinessException;
 import com.eventbooking.exception.ResourceNotFoundException;
+import com.eventbooking.notification.NotificationService;
+import com.eventbooking.payment.StripePaymentClient;
+import com.eventbooking.payment.StripePaymentIntentRequest;
+import com.eventbooking.payment.StripePaymentIntentResult;
+import com.eventbooking.payment.StripeWebhookEvent;
+import com.eventbooking.payment.StripeWebhookVerifier;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.PaymentRepository;
 import com.eventbooking.repository.TicketRepository;
@@ -14,12 +20,15 @@ import com.eventbooking.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -29,6 +38,10 @@ public class PaymentServiceImpl implements PaymentService {
     private final BookingRepository bookingRepository;
     private final PaymentRepository paymentRepository;
     private final TicketRepository ticketRepository;
+    private final StripePaymentClient stripePaymentClient;
+    private final StripeWebhookVerifier stripeWebhookVerifier;
+    private final NotificationService notificationService;
+    private final Environment environment;
 
     @Override
     @Transactional
@@ -41,27 +54,121 @@ public class PaymentServiceImpl implements PaymentService {
             throw new BusinessException("BOOKING_NOT_PENDING", "Only pending bookings can be paid", HttpStatus.CONFLICT);
         }
 
+        String method = request.getMethod().trim().toUpperCase();
+        if ("STRIPE".equals(method)) {
+            return createStripePaymentIntent(booking);
+        }
+        if (!isMockMethod(method) || !isMockAllowed()) {
+            throw new BusinessException("PAYMENT_METHOD_UNSUPPORTED", "Payment method is not supported", HttpStatus.BAD_REQUEST);
+        }
+
         Payment payment = new Payment();
         payment.setBooking(booking);
         payment.setAmount(booking.getTotalPrice());
-        payment.setMethod(request.getMethod());
+        payment.setMethod(method);
         payment.setStatus("PAID");
         payment.setPaymentDate(LocalDateTime.now());
 
+        return completePaidBooking(booking, payment, true);
+    }
+
+    @Override
+    @Transactional
+    public void handleWebhook(String payload, String signatureHeader) {
+        StripeWebhookEvent event = stripeWebhookVerifier.verify(payload, signatureHeader);
+        if (event == null || event.type() == null) {
+            return;
+        }
+        switch (event.type()) {
+            case "payment_intent.succeeded" -> handlePaymentIntentSucceeded(event);
+            case "payment_intent.payment_failed" -> handlePaymentIntentFailed(event);
+            default -> log.debug("stripe_webhook_ignored type={}", event.type());
+        }
+    }
+
+    private PaymentResponse createStripePaymentIntent(Booking booking) {
+        var existing = paymentRepository.findFirstByBookingIdAndMethodOrderByIdDesc(booking.getId(), "STRIPE")
+                .filter(payment -> !"FAILED".equals(payment.getStatus()))
+                .filter(payment -> payment.getClientSecret() != null && !payment.getClientSecret().isBlank());
+        if (existing.isPresent()) {
+            return toResponse(existing.get(), null);
+        }
+
+        long amount = Math.round((booking.getTotalPrice() != null ? booking.getTotalPrice() : 0.0) * 100);
+        StripePaymentIntentResult intent = stripePaymentClient.createPaymentIntent(
+                new StripePaymentIntentRequest(amount, "vnd", Map.of("bookingId", String.valueOf(booking.getId())))
+        );
+
+        Payment payment = new Payment();
+        payment.setBooking(booking);
+        payment.setAmount(booking.getTotalPrice());
+        payment.setMethod("STRIPE");
+        payment.setStatus("PENDING");
+        payment.setPaymentIntentId(intent.paymentIntentId());
+        payment.setClientSecret(intent.clientSecret());
+        payment.setPaymentDate(LocalDateTime.now());
+        return toResponse(paymentRepository.save(payment), null);
+    }
+
+    private void handlePaymentIntentSucceeded(StripeWebhookEvent event) {
+        Booking booking = findBookingFromWebhook(event);
+        Payment payment = paymentRepository.findByPaymentIntentId(event.paymentIntentId())
+                .orElseGet(Payment::new);
+        if ("PAID".equals(booking.getStatus()) || "PAID".equals(payment.getStatus())) {
+            return;
+        }
+        payment.setBooking(booking);
+        payment.setAmount(booking.getTotalPrice());
+        payment.setMethod("STRIPE");
+        payment.setStatus("PAID");
+        payment.setPaymentIntentId(event.paymentIntentId());
+        payment.setPaymentDate(LocalDateTime.now());
+        completePaidBooking(booking, payment, true);
+    }
+
+    private void handlePaymentIntentFailed(StripeWebhookEvent event) {
+        Booking booking = findBookingFromWebhook(event);
+        if (!"PAID".equals(booking.getStatus()) && !"CANCELLED".equals(booking.getStatus())) {
+            booking.setStatus("PENDING");
+            bookingRepository.save(booking);
+        }
+        paymentRepository.findByPaymentIntentId(event.paymentIntentId()).ifPresent(payment -> {
+            payment.setStatus("FAILED");
+            paymentRepository.save(payment);
+        });
+        log.warn("stripe_payment_failed bookingId={} paymentIntentId={}", booking.getId(), event.paymentIntentId());
+    }
+
+    private Booking findBookingFromWebhook(StripeWebhookEvent event) {
+        String bookingId = event.metadata() == null ? null : event.metadata().get("bookingId");
+        if (bookingId == null || bookingId.isBlank()) {
+            throw new BusinessException("STRIPE_WEBHOOK_INVALID", "Stripe webhook is missing bookingId metadata", HttpStatus.BAD_REQUEST);
+        }
+        return bookingRepository.findById(Long.valueOf(bookingId))
+                .orElseThrow(() -> new ResourceNotFoundException("BOOKING_NOT_FOUND", "Booking not found"));
+    }
+
+    private PaymentResponse completePaidBooking(Booking booking, Payment payment, boolean notify) {
         String oldStatus = booking.getStatus();
         booking.setStatus("PAID");
         bookingRepository.save(booking);
         logStatusTransition(booking, oldStatus, booking.getStatus());
         Payment saved = paymentRepository.save(payment);
 
-        Ticket ticket = new Ticket();
-        ticket.setBooking(booking);
-        ticket.setUser(booking.getUser());
-        ticket.setTicketCode(UUID.randomUUID().toString());
-        ticket.setTicketType("GENERAL");
-        ticket.setStatus("ACTIVE");
-        ticket.setCheckedIn(false);
+        Ticket ticket = ticketRepository.findFirstByBookingIdOrderByIdDesc(booking.getId())
+                .orElseGet(Ticket::new);
+        if (ticket.getId() == null) {
+            ticket.setBooking(booking);
+            ticket.setUser(booking.getUser());
+            ticket.setTicketCode(UUID.randomUUID().toString());
+            ticket.setTicketType("GENERAL");
+            ticket.setStatus("ACTIVE");
+            ticket.setCheckedIn(false);
+        }
         Ticket savedTicket = ticketRepository.save(ticket);
+        if (notify) {
+            notificationService.sendBookingPaidEmail(booking, savedTicket);
+        }
 
         return toResponse(saved, savedTicket);
     }
@@ -94,7 +201,9 @@ public class PaymentServiceImpl implements PaymentService {
                 payment.getAmount(),
                 payment.getStatus(),
                 ticket == null ? null : ticket.getId(),
-                ticket == null ? null : ticket.getTicketCode()
+                ticket == null ? null : ticket.getTicketCode(),
+                payment.getClientSecret(),
+                payment.getPaymentIntentId()
         );
     }
 
@@ -109,5 +218,17 @@ public class PaymentServiceImpl implements PaymentService {
                 oldStatus,
                 newStatus,
                 LocalDateTime.now());
+    }
+
+    private boolean isMockMethod(String method) {
+        return "MOCK".equals(method)
+                || "MOCK_CARD".equals(method)
+                || "CREDIT_CARD".equals(method)
+                || "BANK_TRANSFER".equals(method)
+                || "E_WALLET".equals(method);
+    }
+
+    private boolean isMockAllowed() {
+        return !Arrays.asList(environment.getActiveProfiles()).contains("prod");
     }
 }

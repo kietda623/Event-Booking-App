@@ -6,4 +6,5 @@ import com.eventbooking.dto.payment.PaymentResponse;
 public interface PaymentService {
     PaymentResponse pay(PaymentRequest request);
     PaymentResponse getPayment(Long id);
+    void handleWebhook(String payload, String signatureHeader);
 }

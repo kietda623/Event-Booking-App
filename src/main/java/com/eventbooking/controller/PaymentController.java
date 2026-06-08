@@ -25,6 +25,17 @@ public class PaymentController {
         return ApiResponse.success("Payment completed successfully", paymentService.pay(request));
     }
 
+    @PostMapping("/webhook")
+    @Operation(summary = "Handle Stripe payment webhooks")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Webhook processed successfully")
+    public ApiResponse<Void> webhook(
+            @RequestBody String payload,
+            @RequestHeader(name = "Stripe-Signature", required = false) String signatureHeader
+    ) {
+        paymentService.handleWebhook(payload, signatureHeader);
+        return ApiResponse.success("Webhook processed", null);
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get payment detail")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Payment retrieved successfully")

@@ -64,6 +64,8 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/metrics").permitAll()
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/payments/webhook").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/push/vapid-public-key").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/events/*/bookings").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/tickets/checkin").hasRole("ADMIN")

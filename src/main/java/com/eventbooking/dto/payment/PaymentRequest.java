@@ -11,6 +11,6 @@ public class PaymentRequest {
     private Long bookingId;
 
     @NotBlank
-    @Pattern(regexp = "MOCK_CARD|CREDIT_CARD|BANK_TRANSFER|E_WALLET", message = "method must be MOCK_CARD, CREDIT_CARD, BANK_TRANSFER or E_WALLET")
+    @Pattern(regexp = "STRIPE|MOCK|MOCK_CARD|CREDIT_CARD|BANK_TRANSFER|E_WALLET", message = "method must be STRIPE, MOCK, MOCK_CARD, CREDIT_CARD, BANK_TRANSFER or E_WALLET")
     private String method;
 }

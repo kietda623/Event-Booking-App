@@ -12,4 +12,6 @@ public class PaymentResponse {
     private String status;
     private Long ticketId;
     private String ticketCode;
+    private String clientSecret;
+    private String paymentIntentId;
 }

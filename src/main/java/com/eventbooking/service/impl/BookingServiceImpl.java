@@ -10,6 +10,7 @@ import com.eventbooking.entity.Ticket;
 import com.eventbooking.entity.User;
 import com.eventbooking.exception.BusinessException;
 import com.eventbooking.exception.ResourceNotFoundException;
+import com.eventbooking.notification.NotificationService;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.RefundRepository;
@@ -36,6 +37,7 @@ public class BookingServiceImpl implements BookingService {
     private final UserRepository userRepository;
     private final RefundRepository refundRepository;
     private final TicketRepository ticketRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -104,6 +106,7 @@ public class BookingServiceImpl implements BookingService {
                 ticket.setStatus("CANCELLED");
             }
             ticketRepository.saveAll(tickets);
+            notificationService.sendBookingCancelledEmail(saved);
             return toResponse(saved);
         }
         throw new BusinessException("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled", HttpStatus.CONFLICT);

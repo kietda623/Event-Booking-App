@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 public interface TicketRepository extends JpaRepository<Ticket, Long> {
     @Query(
@@ -21,4 +22,17 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     Optional<Ticket> findFirstByBookingIdOrderByIdDesc(Long bookingId);
     Optional<Ticket> findByTicketCode(String ticketCode);
     List<Ticket> findByBookingId(Long bookingId);
+
+    @Query("""
+            select t from Ticket t
+            join t.booking b
+            join b.event e
+            join Reminder r on r.user = t.user
+            where b.status = 'PAID'
+              and t.status = 'ACTIVE'
+              and r.eventReminder = true
+              and e.eventDate >= :from
+              and e.eventDate < :to
+            """)
+    List<Ticket> findReminderTickets(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

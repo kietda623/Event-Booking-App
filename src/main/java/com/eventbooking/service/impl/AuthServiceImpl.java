@@ -8,6 +8,7 @@ import com.eventbooking.entity.Role;
 import com.eventbooking.entity.User;
 import com.eventbooking.dto.auth.AuthResponse.AuthUserResponse;
 import com.eventbooking.exception.BusinessException;
+import com.eventbooking.notification.NotificationService;
 import com.eventbooking.repository.RefreshTokenRepository;
 import com.eventbooking.repository.RoleRepository;
 import com.eventbooking.repository.UserRepository;
@@ -43,6 +44,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthAttemptLimiter authAttemptLimiter;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -66,6 +68,7 @@ public class AuthServiceImpl implements AuthService {
         user.setRoles(new HashSet<>(Set.of(role)));
         User saved = userRepository.save(user);
         authAttemptLimiter.reset(email);
+        notificationService.sendWelcomeEmail(saved);
 
         return toAuthResponse(saved);
     }

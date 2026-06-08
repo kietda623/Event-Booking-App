@@ -65,6 +65,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     private boolean shouldSkip(HttpServletRequest request) {
         String path = request.getRequestURI();
         return path.startsWith("/api/auth/")
+                || path.equals("/api/payments/webhook")
                 || path.startsWith("/actuator/")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/swagger-ui");
