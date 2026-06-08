@@ -60,3 +60,42 @@ Create the `event_booking` database before starting the app. Hibernate is curren
 All endpoints except auth and public event reads require `Authorization: Bearer <token>`.
 
 Payment is currently an internal mock flow. It marks the booking as `PAID`, creates a payment record, and generates a ticket code.
+
+## Frontend Workspace
+
+The React frontend lives under `frontend/` and is split into two Vite apps with a shared package:
+
+- `frontend/apps/user` - responsive end-user web app on port `5173`
+- `frontend/apps/admin` - admin event management web app on port `5174`
+- `frontend/packages/shared` - API client, DTO types, auth helpers, formatters, and shared shadcn-style UI primitives
+
+Install dependencies once from the frontend root:
+
+```powershell
+cd frontend
+npm install
+```
+
+Run the user app:
+
+```powershell
+npm run dev:user
+```
+
+Run the admin app:
+
+```powershell
+npm run dev:admin
+```
+
+Both apps proxy `/api` to `http://localhost:8080`, so start the Spring Boot backend first. The admin app expects an account with role `ADMIN`; for local development, enable the existing admin seeder properties if you need a seeded admin user.
+
+Frontend verification:
+
+```powershell
+cd frontend
+npm run lint
+npm run typecheck
+npm run build:user
+npm run build:admin
+```

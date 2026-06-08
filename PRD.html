@@ -302,14 +302,18 @@ footer strong{color:rgba(255,255,255,.95);}
       <div class="icon">05</div>
       <div>
         <div class="section-num">React Frontend</div>
-        <h2>Định Hướng Frontend React</h2>
+        <h2>Kiến Trúc Frontend React Đã Scaffold</h2>
       </div>
     </div>
-    <p>Frontend React là phần đề xuất triển khai tiếp để biến backend API thành trải nghiệm sản phẩm hoàn chỉnh. MVP không cần SSR; Vite là lựa chọn nhẹ, nhanh và phù hợp dự án học tập/MVP.</p>
+    <p>Frontend React hiện đã được tạo trong repo theo hướng hai app riêng: end-user app và admin web. Cả hai dùng Vite + React + TypeScript + Tailwind + shadcn-style shared UI, proxy `/api` về backend Spring Boot port 8080.</p>
     <div class="card-grid">
-      <div class="card"><h3>Stack</h3><ul><li>React + Vite</li><li>React Router</li><li>Axios hoặc Fetch wrapper</li><li>Context API hoặc Zustand</li><li>Tailwind, CSS Modules hoặc SCSS</li></ul></div>
-      <div class="card"><h3>Routes</h3><ul><li><code>/</code> danh sách sự kiện</li><li><code>/events/:id</code> chi tiết</li><li><code>/login</code>, <code>/register</code></li><li><code>/tickets</code>, <code>/profile</code></li><li><code>/admin/events</code></li></ul></div>
-      <div class="card"><h3>API Client</h3><ul><li>Gắn JWT tự động</li><li>Redirect login khi 401</li><li>Hiển thị 403 rõ ràng</li><li>Parse validation `errors`</li><li>Chuẩn hóa loading/error state</li></ul></div>
+      <div class="card"><h3>Workspace</h3><ul><li><code>frontend/apps/user</code> chạy port 5173</li><li><code>frontend/apps/admin</code> chạy port 5174</li><li><code>frontend/packages/shared</code> chứa API/types/auth/UI</li><li>NPM workspaces tại <code>frontend/package.json</code></li></ul></div>
+      <div class="card"><h3>User Routes</h3><ul><li><code>/</code>, <code>/events/:id</code></li><li><code>/login</code>, <code>/register</code></li><li><code>/bookings</code>, <code>/bookings/:id/payment</code></li><li><code>/tickets</code>, <code>/favorites</code>, <code>/profile</code></li></ul></div>
+      <div class="card"><h3>Admin Routes</h3><ul><li><code>/login</code></li><li><code>/admin/events</code></li><li><code>/admin/events/new</code></li><li><code>/admin/events/:id/edit</code></li><li>Role guard dựa trên <code>GET /api/users/profile</code></li></ul></div>
+    </div>
+    <h3>Shared API Contract</h3>
+    <div class="highlight">
+      <p><strong>Frontend foundation:</strong> Shared package tự động gắn JWT từ localStorage, clear session khi 401, parse lỗi backend `{ success:false, message, errors }`, và gom service cho auth, events, bookings, payments, tickets, users và favorites.</p>
     </div>
     <h3>Luồng UI chính</h3>
     <div class="flow">
@@ -318,6 +322,13 @@ footer strong{color:rgba(255,255,255,.95);}
       <span class="flow-step alt">Booking</span><span class="flow-arrow">→</span>
       <span class="flow-step info">Payment</span><span class="flow-arrow">→</span>
       <span class="flow-step success">My Tickets</span>
+    </div>
+    <div class="flow">
+      <span class="flow-step">Admin Login</span><span class="flow-arrow">→</span>
+      <span class="flow-step">Role Check</span><span class="flow-arrow">→</span>
+      <span class="flow-step alt">Event Table</span><span class="flow-arrow">→</span>
+      <span class="flow-step info">Create/Edit</span><span class="flow-arrow">→</span>
+      <span class="flow-step success">Delete</span>
     </div>
   </div>
 </section>
@@ -349,7 +360,7 @@ footer strong{color:rgba(255,255,255,.95);}
           <tr><td>Payment/Ticket</td><td>Thanh toán và sinh vé.</td><td>Payment mock nhận request body, cập nhật booking `PAID`, tạo payment record và ticket code.</td><td>Khi production, thay bằng Stripe/VNPay/MoMo sandbox và webhook/idempotency.</td></tr>
           <tr><td>User/Profile</td><td>Profile và reminder settings.</td><td>Đã có `GET/PUT /api/users/profile` và `PUT /api/users/reminders` cho user hiện tại.</td><td>Thêm validation nâng cao và notification scheduler.</td></tr>
           <tr><td>Favorites</td><td>Wishlist/favorite events.</td><td>Đã có backend tối thiểu để toggle và list favorite theo user.</td><td>Thêm UI React và count favorite/popular nếu cần.</td></tr>
-          <tr><td>Frontend</td><td>React app end-to-end.</td><td>Chưa tạo source React trong repo.</td><td>Bắt đầu sau khi chốt API contract MVP.</td></tr>
+          <tr><td>Frontend</td><td>React app end-to-end cho user và admin.</td><td>Đã scaffold `frontend/apps/user`, `frontend/apps/admin` và `frontend/packages/shared`; build/lint/typecheck pass.</td><td>Smoke test với backend thật, bổ sung polish UI và state management nâng cao nếu cần.</td></tr>
         </tbody>
       </table>
     </div>
@@ -365,7 +376,7 @@ footer strong{color:rgba(255,255,255,.95);}
         <h2>Class Diagram Và Sequence Cho Từng Chức Năng</h2>
       </div>
     </div>
-    <p>Các sequence dưới đây mô tả luồng backend MVP hiện tại theo controller, service, repository và entity trong codebase. Frontend React vẫn là phase triển khai sau, nên diagram tập trung vào API/backend.</p>
+    <p>Các sequence dưới đây mô tả luồng backend MVP hiện tại theo controller, service, repository và entity trong codebase. Frontend React đã có workspace MVP, còn diagram phần này vẫn tập trung vào API/backend để giữ contract rõ ràng.</p>
 
     <h3>Class Diagram - Domain Chính</h3>
     <pre class="mermaid">
@@ -932,7 +943,7 @@ sequenceDiagram
       <div class="phase-card done"><div class="phase-tag">Phase 1 - Done</div><h4>Backend MVP foundation</h4><ul><li>Java 25, Spring Boot 3.5.10, H2 test profile.</li><li>Repository `JpaRepository` cho domain lõi.</li><li>Auth DB, BCrypt, JWT thật và security context.</li><li>Integration test pass cho flow chính.</li></ul></div>
       <div class="phase-card done"><div class="phase-tag">Phase 2 - Done</div><h4>Core booking flow</h4><ul><li>Event list/search/detail và admin CRUD.</li><li>Booking `PENDING` với validate tồn vé.</li><li>Payment mock chuyển booking sang `PAID`.</li><li>Sinh ticket và xem ticket của user.</li></ul></div>
       <div class="phase-card done"><div class="phase-tag">Phase 3 - Done</div><h4>Controlled backend increments</h4><ul><li>JSON 401/403 và test auth/security.</li><li>Admin seed cho dev/test.</li><li>Event pagination, sort, upcoming.</li><li>GET profile, favorites và cancel PENDING booking.</li></ul></div>
-      <div class="phase-card active"><div class="phase-tag">Phase 4 - Current</div><h4>React MVP</h4><ul><li>Scaffold React + Vite.</li><li>Login/register, event list/detail.</li><li>Booking, Payment mock, my bookings/tickets.</li><li>Profile/favorites và admin event management.</li></ul></div>
+      <div class="phase-card done"><div class="phase-tag">Phase 4 - Done</div><h4>React MVP foundation</h4><ul><li>Hai app Vite React: user và admin.</li><li>Shared API client/types/auth/UI package.</li><li>User flow: auth, events, booking, payment, tickets, profile, favorites.</li><li>Admin flow: role guard và event CRUD.</li></ul></div>
       <div class="phase-card future"><div class="phase-tag">Phase 5 - Future</div><h4>Mở rộng production</h4><ul><li>Payment gateway thật và webhook.</li><li>QR check-in, paid refund/cancel.</li><li>Upload ảnh/avatar, nearby GPS.</li><li>Analytics doanh thu và sự kiện phổ biến.</li></ul></div>
     </div>
   </div>
@@ -956,7 +967,7 @@ sequenceDiagram
           <tr><td>Payment mock chưa xử lý tiền thật.</td><td><span class="risk-high">Cao</span></td><td>Không dùng được cho production và thiếu webhook/idempotency/refund.</td><td>Giữ rõ nhãn mock trong MVP, tích hợp Stripe/VNPay/MoMo sandbox ở phase production.</td></tr>
           <tr><td>Admin seeding mới phục vụ dev/test, chưa phải quy trình quản trị production.</td><td><span class="risk-med">Trung bình</span></td><td>Cần tránh bật seed admin mặc định sai môi trường.</td><td>Giữ `app.admin.seed=false` mặc định và chỉ bật trong test/dev có kiểm soát.</td></tr>
           <tr><td>Race condition khi nhiều user đặt vé cùng sự kiện.</td><td><span class="risk-med">Trung bình</span></td><td>Có thể oversell nếu booking đồng thời vượt `totalTickets`.</td><td>Thêm locking/transaction boundary và test concurrent booking trước production.</td></tr>
-          <tr><td>Frontend React chưa được triển khai.</td><td><span class="risk-med">Trung bình</span></td><td>Người dùng cuối chưa có UI để chạy flow end-to-end.</td><td>Xây React MVP trên contract backend đã ổn định hơn.</td></tr>
+          <tr><td>Frontend React cần smoke test với backend thật.</td><td><span class="risk-med">Trung bình</span></td><td>Build đã pass nhưng flow runtime còn phụ thuộc dữ liệu MySQL, admin seed và backend đang chạy.</td><td>Chạy backend local, test user/admin flow bằng browser và bổ sung seed data tiện demo.</td></tr>
           <tr><td>Filter nâng cao popular/nearby chưa có.</td><td><span class="risk-low">Thấp</span></td><td>Trải nghiệm khám phá sự kiện còn cơ bản dù đã có upcoming/pagination.</td><td>Bổ sung GPS và scoring sau khi React MVP hoạt động.</td></tr>
         </tbody>
       </table>
