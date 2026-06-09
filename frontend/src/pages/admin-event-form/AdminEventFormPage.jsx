@@ -19,13 +19,23 @@ const emptyForm = {
   longitude: '',
 }
 
+const emptyTierForm = {
+  name: '',
+  price: '',
+  totalQuantity: '',
+  description: '',
+}
+
 export function AdminEventFormPage() {
   const { id } = useParams()
   const isEditing = Boolean(id)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [form, setForm] = useState(emptyForm)
+  const [tierForm, setTierForm] = useState(emptyTierForm)
+  const [editingTierId, setEditingTierId] = useState(null)
   const [apiError, setApiError] = useState(null)
+  const [tierApiError, setTierApiError] = useState(null)
 
   const eventQuery = useQuery({
     queryKey: ['admin-event', id],
@@ -59,6 +69,28 @@ export function AdminEventFormPage() {
     },
     onError: setApiError,
   })
+  const tierMutation = useMutation({
+    mutationFn: (payload) =>
+      editingTierId ? eventsApi.updateTier(id, editingTierId, payload) : eventsApi.createTier(id, payload),
+    onSuccess: () => {
+      setTierForm(emptyTierForm)
+      setEditingTierId(null)
+      setTierApiError(null)
+      queryClient.invalidateQueries({ queryKey: ['admin-event', id] })
+      queryClient.invalidateQueries({ queryKey: ['event', id] })
+      queryClient.invalidateQueries({ queryKey: ['events'] })
+    },
+    onError: setTierApiError,
+  })
+  const deleteTierMutation = useMutation({
+    mutationFn: (tierId) => eventsApi.removeTier(id, tierId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-event', id] })
+      queryClient.invalidateQueries({ queryKey: ['event', id] })
+      queryClient.invalidateQueries({ queryKey: ['events'] })
+    },
+    onError: setTierApiError,
+  })
 
   if (isEditing && eventQuery.isLoading) return <LoadingState label="Loading event form..." />
   if (isEditing && eventQuery.isError && eventQuery.error?.code === 'EVENT_NOT_FOUND') {
@@ -67,6 +99,27 @@ export function AdminEventFormPage() {
   if (isEditing && eventQuery.isError) return <ErrorState error={eventQuery.error} title="Could not load event" />
 
   const setField = (field, value) => setForm((current) => ({ ...current, [field]: value }))
+  const setTierField = (field, value) => setTierForm((current) => ({ ...current, [field]: value }))
+
+  const submitTier = () => {
+    setTierApiError(null)
+    tierMutation.mutate({
+      name: tierForm.name,
+      price: tierForm.price === '' ? 0 : Number(tierForm.price),
+      totalQuantity: tierForm.totalQuantity === '' ? 0 : Number(tierForm.totalQuantity),
+      description: tierForm.description || null,
+    })
+  }
+
+  const editTier = (tier) => {
+    setEditingTierId(tier.id)
+    setTierForm({
+      name: tier.name || '',
+      price: tier.price ?? '',
+      totalQuantity: tier.totalQuantity ?? '',
+      description: tier.description || '',
+    })
+  }
 
   const onSubmit = (event) => {
     event.preventDefault()
@@ -151,6 +204,89 @@ export function AdminEventFormPage() {
           Description
           <textarea value={form.description} onChange={(event) => setField('description', event.target.value)} rows="5" />
         </label>
+        {isEditing && (
+          <section className="tier-editor">
+            <div className="section-header">
+              <div>
+                <p className="eyebrow">Inventory</p>
+                <h2>Ticket tiers</h2>
+              </div>
+            </div>
+            <FormError error={tierApiError} />
+            <div className="tier-list">
+              {(eventQuery.data?.tiers || []).map((tier) => (
+                <div className="tier-row" key={tier.id}>
+                  <div>
+                    <strong>{tier.name}</strong>
+                    <span>
+                      {tier.soldQuantity ?? 0}/{tier.totalQuantity ?? 0} sold
+                    </span>
+                  </div>
+                  <span>{tier.availableQuantity ?? 0} left</span>
+                  <div className="row-actions">
+                    <button className="button small" type="button" onClick={() => editTier(tier)}>
+                      Edit
+                    </button>
+                    <button
+                      className="button small ghost"
+                      type="button"
+                      onClick={() => deleteTierMutation.mutate(tier.id)}
+                      disabled={deleteTierMutation.isPending}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="form-grid">
+              <label>
+                Tier name
+                <input value={tierForm.name} onChange={(event) => setTierField('name', event.target.value)} />
+              </label>
+              <label>
+                Tier price
+                <input type="number" min="0" step="0.01" value={tierForm.price} onChange={(event) => setTierField('price', event.target.value)} />
+              </label>
+              <label>
+                Total quantity
+                <input type="number" min="0" value={tierForm.totalQuantity} onChange={(event) => setTierField('totalQuantity', event.target.value)} />
+              </label>
+            </div>
+            <label>
+              Tier description
+              <textarea value={tierForm.description} onChange={(event) => setTierField('description', event.target.value)} rows="3" />
+            </label>
+            <div className="row-actions">
+              <button className="button" type="button" onClick={submitTier} disabled={tierMutation.isPending}>
+                {editingTierId ? 'Update tier' : 'Add tier'}
+              </button>
+              {editingTierId && (
+                <button
+                  className="button ghost"
+                  type="button"
+                  onClick={() => {
+                    setEditingTierId(null)
+                    setTierForm(emptyTierForm)
+                  }}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+        {!isEditing && (
+          <section className="tier-editor">
+            <div className="section-header">
+              <div>
+                <p className="eyebrow">Inventory</p>
+                <h2>Ticket tiers</h2>
+              </div>
+            </div>
+            <div className="state-box">Save event before managing tiers.</div>
+          </section>
+        )}
         <button className="button primary" type="submit" disabled={mutation.isPending}>
           {mutation.isPending ? 'Saving...' : 'Save event'}
         </button>

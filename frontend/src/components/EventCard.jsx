@@ -6,6 +6,7 @@ const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=900&q=80'
 
 export function EventCard({ event, isFavorited = false, favoriteBusy = false, onFavoriteToggle }) {
+  const hasDistance = event.distanceKm !== null && event.distanceKm !== undefined
   return (
     <article className="event-card">
       {onFavoriteToggle && (
@@ -22,6 +23,7 @@ export function EventCard({ event, isFavorited = false, favoriteBusy = false, on
           <span>{formatDateTime(event.eventDate)}</span>
           <span>{formatCurrency(event.price)}</span>
         </div>
+        {hasDistance && <span className="distance-badge">{Number(event.distanceKm).toFixed(1)} km away</span>}
         <h3>{event.title}</h3>
         <p>{event.location || 'Location pending'}</p>
         <div className="event-card-footer">

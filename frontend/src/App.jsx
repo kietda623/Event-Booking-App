@@ -33,6 +33,9 @@ const BookingsPage = lazy(() =>
 const EventDetailPage = lazy(() =>
   import('./pages/event-detail/EventDetailPage.jsx').then((module) => ({ default: module.EventDetailPage })),
 )
+const EventSeatsPage = lazy(() =>
+  import('./pages/event-seats/EventSeatsPage.jsx').then((module) => ({ default: module.EventSeatsPage })),
+)
 const EventsPage = lazy(() => import('./pages/events/EventsPage.jsx').then((module) => ({ default: module.EventsPage })))
 const FavoritesPage = lazy(() =>
   import('./pages/favorites/FavoritesPage.jsx').then((module) => ({ default: module.FavoritesPage })),
@@ -61,6 +64,7 @@ function App() {
           </Route>
           <Route element={<PrivateRoute />}>
             <Route path="events/:id/book" element={<BookEventPage />} />
+            <Route path="events/:id/seats" element={<EventSeatsPage />} />
             <Route path="favorites" element={<FavoritesPage />} />
             <Route path="bookings" element={<BookingsPage />} />
             <Route path="bookings/:id" element={<BookingDetailPage />} />

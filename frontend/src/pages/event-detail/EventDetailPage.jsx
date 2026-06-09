@@ -38,6 +38,8 @@ export function EventDetailPage() {
 
   const event = query.data
   const isFavorited = (favoritesQuery.data?.content || []).some((item) => String(item.id) === String(event.id))
+  const tiers = event.tiers || []
+  const bookLink = tiers.length === 1 ? `/events/${event.id}/book?tierId=${tiers[0].id}` : `/events/${event.id}/book`
 
   return (
     <section className="detail-layout">
@@ -70,10 +72,29 @@ export function EventDetailPage() {
             <dd>{event.availableTickets ?? 0}</dd>
           </div>
         </dl>
+        {tiers.length > 0 && (
+          <div className="tier-grid">
+            {tiers.map((tier) => (
+              <div className="tier-card" key={tier.id}>
+                <div>
+                  <strong>{tier.name}</strong>
+                  <span>{tier.availableQuantity ?? 0} left</span>
+                </div>
+                <b>{formatCurrency(tier.price)}</b>
+                {tier.description && <p>{tier.description}</p>}
+              </div>
+            ))}
+          </div>
+        )}
         {user && (
-          <Link className="button primary" to={`/events/${event.id}/book`}>
-            Book Now
-          </Link>
+          <div className="row-actions">
+            <Link className="button primary" to={bookLink}>
+              Book Now
+            </Link>
+            <Link className="button ghost" to={`/events/${event.id}/seats`}>
+              Choose seats
+            </Link>
+          </div>
         )}
         {!user && (
           <Link className="button primary" to="/login">

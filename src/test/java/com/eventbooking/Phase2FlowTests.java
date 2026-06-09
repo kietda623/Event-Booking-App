@@ -2,6 +2,7 @@ package com.eventbooking;
 
 import com.eventbooking.entity.Event;
 import com.eventbooking.entity.Role;
+import com.eventbooking.entity.TicketTier;
 import com.eventbooking.entity.User;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.EventRepository;
@@ -9,6 +10,7 @@ import com.eventbooking.repository.FavoriteRepository;
 import com.eventbooking.repository.PaymentRepository;
 import com.eventbooking.repository.ReminderRepository;
 import com.eventbooking.repository.RoleRepository;
+import com.eventbooking.repository.TicketTierRepository;
 import com.eventbooking.repository.TicketRepository;
 import com.eventbooking.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -63,6 +65,9 @@ class Phase2FlowTests {
     private TicketRepository ticketRepository;
 
     @Autowired
+    private TicketTierRepository ticketTierRepository;
+
+    @Autowired
     private FavoriteRepository favoriteRepository;
 
     @Autowired
@@ -78,6 +83,7 @@ class Phase2FlowTests {
         favoriteRepository.deleteAll();
         reminderRepository.deleteAll();
         bookingRepository.deleteAll();
+        ticketTierRepository.deleteAll();
         eventRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -206,14 +212,14 @@ class Phase2FlowTests {
         mockMvc.perform(post("/api/bookings")
                         .header("Authorization", "Bearer " + ownerToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("eventId", event.getId(), "quantity", 0))))
+                        .content(json(Map.of("eventId", event.getId(), "tierId", firstTierId(event.getId()), "quantity", 0))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_QUANTITY"));
 
         mockMvc.perform(post("/api/bookings")
                         .header("Authorization", "Bearer " + ownerToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("eventId", 999999L, "quantity", 1))))
+                        .content(json(Map.of("eventId", 999999L, "tierId", firstTierId(event.getId()), "quantity", 1))))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("EVENT_NOT_FOUND"));
 
@@ -307,7 +313,7 @@ class Phase2FlowTests {
         String bookingJson = mockMvc.perform(post("/api/bookings")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("eventId", eventId, "quantity", quantity))))
+                        .content(json(Map.of("eventId", eventId, "tierId", firstTierId(eventId), "quantity", quantity))))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -339,7 +345,23 @@ class Phase2FlowTests {
         event.setImageUrl("https://cdn.example.com/" + title.toLowerCase().replace(" ", "-") + ".jpg");
         event.setLatitude(latitude);
         event.setLongitude(longitude);
-        return eventRepository.save(event);
+        Event saved = eventRepository.save(event);
+        saveTier(saved, totalTickets, price);
+        return saved;
+    }
+
+    private void saveTier(Event event, int totalTickets, double price) {
+        TicketTier tier = new TicketTier();
+        tier.setEvent(event);
+        tier.setName("GENERAL");
+        tier.setPrice(price);
+        tier.setTotalQuantity(totalTickets);
+        tier.setSoldQuantity(0);
+        ticketTierRepository.save(tier);
+    }
+
+    private Long firstTierId(Long eventId) {
+        return ticketTierRepository.findByEventIdOrderByIdAsc(eventId).get(0).getId();
     }
 
     private String eventRequest(String title, LocalDateTime eventDate, int totalTickets, String imageUrl,

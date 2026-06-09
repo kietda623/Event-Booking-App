@@ -17,6 +17,7 @@ import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.PaymentRepository;
 import com.eventbooking.repository.TicketRepository;
 import com.eventbooking.service.PaymentService;
+import com.eventbooking.service.SeatService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -42,6 +45,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final StripeWebhookVerifier stripeWebhookVerifier;
     private final NotificationService notificationService;
     private final Environment environment;
+    private final SeatService seatService;
 
     @Override
     @Transactional
@@ -152,25 +156,40 @@ public class PaymentServiceImpl implements PaymentService {
         String oldStatus = booking.getStatus();
         booking.setStatus("PAID");
         bookingRepository.save(booking);
+        seatService.bookSeats(booking);
         logStatusTransition(booking, oldStatus, booking.getStatus());
         Payment saved = paymentRepository.save(payment);
 
-        Ticket ticket = ticketRepository.findFirstByBookingIdOrderByIdDesc(booking.getId())
-                .orElseGet(Ticket::new);
-        if (ticket.getId() == null) {
-            ticket.setBooking(booking);
-            ticket.setUser(booking.getUser());
-            ticket.setTicketCode(UUID.randomUUID().toString());
-            ticket.setTicketType("GENERAL");
-            ticket.setStatus("ACTIVE");
-            ticket.setCheckedIn(false);
-        }
-        Ticket savedTicket = ticketRepository.save(ticket);
+        Ticket savedTicket = createTicketsIfNeeded(booking);
         if (notify) {
             notificationService.sendBookingPaidEmail(booking, savedTicket);
         }
 
         return toResponse(saved, savedTicket);
+    }
+
+    private Ticket createTicketsIfNeeded(Booking booking) {
+        List<Ticket> existingTickets = ticketRepository.findByBookingId(booking.getId());
+        if (!existingTickets.isEmpty()) {
+            return existingTickets.get(0);
+        }
+        List<String> seats = splitSeatNumbers(booking.getSeatNumbers());
+        int quantity = booking.getQuantity() != null ? booking.getQuantity() : 1;
+        int ticketCount = seats.isEmpty() ? Math.max(quantity, 1) : seats.size();
+        List<Ticket> tickets = new ArrayList<>();
+        for (int index = 0; index < ticketCount; index++) {
+            Ticket ticket = new Ticket();
+            ticket.setBooking(booking);
+            ticket.setUser(booking.getUser());
+            ticket.setTier(booking.getTier());
+            ticket.setTicketCode(UUID.randomUUID().toString());
+            ticket.setTicketType(booking.getTier() == null ? "GENERAL" : booking.getTier().getName());
+            ticket.setSeatNumber(seats.isEmpty() ? null : seats.get(index));
+            ticket.setStatus("ACTIVE");
+            ticket.setCheckedIn(false);
+            tickets.add(ticket);
+        }
+        return ticketRepository.saveAll(tickets).get(0);
     }
 
     @Override
@@ -230,5 +249,15 @@ public class PaymentServiceImpl implements PaymentService {
 
     private boolean isMockAllowed() {
         return !Arrays.asList(environment.getActiveProfiles()).contains("prod");
+    }
+
+    private List<String> splitSeatNumbers(String seatNumbers) {
+        if (seatNumbers == null || seatNumbers.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(seatNumbers.split(","))
+                .filter(seatNumber -> !seatNumber.isBlank())
+                .map(String::trim)
+                .toList();
     }
 }

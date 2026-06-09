@@ -90,6 +90,8 @@ function BookingPaymentForm({ booking, bookingId }) {
         <FormError error={apiError} />
         <div className="summary-box">
           <span>Quantity: {booking.quantity}</span>
+          {booking.tierName && <span>Tier: {booking.tierName}</span>}
+          {(booking.seatNumbers || []).length > 0 && <span>Seats: {booking.seatNumbers.join(', ')}</span>}
           <strong>Total: {formatCurrency(booking.totalPrice)}</strong>
         </div>
         <label>

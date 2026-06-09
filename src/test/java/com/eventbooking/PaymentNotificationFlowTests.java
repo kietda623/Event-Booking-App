@@ -2,6 +2,7 @@ package com.eventbooking;
 
 import com.eventbooking.entity.Event;
 import com.eventbooking.entity.Reminder;
+import com.eventbooking.entity.TicketTier;
 import com.eventbooking.notification.EmailMessage;
 import com.eventbooking.notification.MailSender;
 import com.eventbooking.payment.StripePaymentClient;
@@ -13,6 +14,7 @@ import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.PaymentRepository;
 import com.eventbooking.repository.ReminderRepository;
+import com.eventbooking.repository.TicketTierRepository;
 import com.eventbooking.repository.TicketRepository;
 import com.eventbooking.reminder.EventReminderScheduler;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -70,6 +72,9 @@ class PaymentNotificationFlowTests {
     private TicketRepository ticketRepository;
 
     @Autowired
+    private TicketTierRepository ticketTierRepository;
+
+    @Autowired
     private ReminderRepository reminderRepository;
 
     @Autowired
@@ -87,11 +92,13 @@ class PaymentNotificationFlowTests {
     @BeforeEach
     void cleanDatabase() {
         jdbcTemplate.execute("delete from push_subscriptions");
+        jdbcTemplate.execute("delete from seats");
         jdbcTemplate.execute("delete from refunds");
         ticketRepository.deleteAll();
         paymentRepository.deleteAll();
         reminderRepository.deleteAll();
         bookingRepository.deleteAll();
+        ticketTierRepository.deleteAll();
         eventRepository.deleteAll();
         jdbcTemplate.execute("delete from refresh_tokens");
         jdbcTemplate.execute("delete from user_roles");
@@ -261,7 +268,7 @@ class PaymentNotificationFlowTests {
         String bookingJson = mockMvc.perform(post("/api/bookings")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("eventId", eventId, "quantity", quantity))))
+                        .content(json(Map.of("eventId", eventId, "tierId", firstTierId(eventId), "quantity", quantity))))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -293,7 +300,23 @@ class PaymentNotificationFlowTests {
         event.setTotalTickets(100);
         event.setTicketPrice(price);
         event.setImageUrl("https://cdn.example.com/" + title.toLowerCase().replace(" ", "-") + ".jpg");
-        return eventRepository.save(event);
+        Event saved = eventRepository.save(event);
+        saveTier(saved, 100, price);
+        return saved;
+    }
+
+    private void saveTier(Event event, int totalTickets, double price) {
+        TicketTier tier = new TicketTier();
+        tier.setEvent(event);
+        tier.setName("GENERAL");
+        tier.setPrice(price);
+        tier.setTotalQuantity(totalTickets);
+        tier.setSoldQuantity(0);
+        ticketTierRepository.save(tier);
+    }
+
+    private Long firstTierId(Long eventId) {
+        return ticketTierRepository.findByEventIdOrderByIdAsc(eventId).get(0).getId();
     }
 
     private String json(Object value) throws Exception {

@@ -7,7 +7,8 @@ import com.eventbooking.dto.event.EventRequest;
 
 public interface EventService {
     PageResponse<EventResponse> getAll(String type, Double latitude, Double longitude, String search, boolean upcoming,
-                                       int page, int size, String sortBy, String sortDir);
+                                       Double radius, int page, int size, String sortBy, String sortDir);
+    java.util.List<EventResponse> nearbyPreview(Double latitude, Double longitude);
     EventResponse getById(Long id);
     EventResponse create(EventRequest request);
     EventResponse update(Long id, EventRequest request);

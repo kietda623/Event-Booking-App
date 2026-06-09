@@ -2,6 +2,7 @@ package com.eventbooking;
 
 import com.eventbooking.entity.Event;
 import com.eventbooking.entity.Role;
+import com.eventbooking.entity.TicketTier;
 import com.eventbooking.entity.User;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.EventRepository;
@@ -9,6 +10,7 @@ import com.eventbooking.repository.FavoriteRepository;
 import com.eventbooking.repository.PaymentRepository;
 import com.eventbooking.repository.ReminderRepository;
 import com.eventbooking.repository.RoleRepository;
+import com.eventbooking.repository.TicketTierRepository;
 import com.eventbooking.repository.TicketRepository;
 import com.eventbooking.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,6 +37,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -70,6 +73,9 @@ class EventBookingFlowTests {
     private TicketRepository ticketRepository;
 
     @Autowired
+    private TicketTierRepository ticketTierRepository;
+
+    @Autowired
     private FavoriteRepository favoriteRepository;
 
     @Autowired
@@ -87,6 +93,7 @@ class EventBookingFlowTests {
         favoriteRepository.deleteAll();
         reminderRepository.deleteAll();
         bookingRepository.deleteAll();
+        ticketTierRepository.deleteAll();
         eventRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -233,7 +240,7 @@ class EventBookingFlowTests {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.content[0].ticketCode").value(ticketCode))
+                .andExpect(jsonPath("$.data.content[*].ticketCode").value(hasItem(ticketCode)))
                 .andExpect(jsonPath("$.data.content[0].eventTitle").value("Conference"))
                 .andExpect(jsonPath("$.data.content[0].status").value("PAID"));
 
@@ -320,11 +327,12 @@ class EventBookingFlowTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "eventId", savedEvent.getId(),
+                                "tierId", firstTierId(savedEvent.getId()),
                                 "quantity", 1
                         ))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.code").value("EVENT_SOLD_OUT"));
+                .andExpect(jsonPath("$.code").value("TIER_SOLD_OUT"));
     }
 
     @Test
@@ -336,8 +344,9 @@ class EventBookingFlowTests {
         CountDownLatch start = new CountDownLatch(1);
         executor = Executors.newFixedThreadPool(2);
 
-        Future<Integer> first = executor.submit(() -> bookWhenReleased(firstToken, savedEvent.getId(), ready, start));
-        Future<Integer> second = executor.submit(() -> bookWhenReleased(secondToken, savedEvent.getId(), ready, start));
+        Long tierId = firstTierId(savedEvent.getId());
+        Future<Integer> first = executor.submit(() -> bookWhenReleased(firstToken, savedEvent.getId(), tierId, ready, start));
+        Future<Integer> second = executor.submit(() -> bookWhenReleased(secondToken, savedEvent.getId(), tierId, ready, start));
 
         assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
         start.countDown();
@@ -347,7 +356,7 @@ class EventBookingFlowTests {
         assertThat(bookingRepository.sumBookedQuantityByEventId(savedEvent.getId())).isEqualTo(1L);
     }
 
-    private int bookWhenReleased(String token, Long eventId, CountDownLatch ready, CountDownLatch start) throws Exception {
+    private int bookWhenReleased(String token, Long eventId, Long tierId, CountDownLatch ready, CountDownLatch start) throws Exception {
         ready.countDown();
         assertThat(start.await(5, TimeUnit.SECONDS)).isTrue();
         return mockMvc.perform(post("/api/bookings")
@@ -355,6 +364,7 @@ class EventBookingFlowTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "eventId", eventId,
+                                "tierId", tierId,
                                 "quantity", 1
                         ))))
                 .andReturn()
@@ -414,6 +424,7 @@ class EventBookingFlowTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "eventId", eventId,
+                                "tierId", firstTierId(eventId),
                                 "quantity", quantity
                         ))))
                 .andExpect(status().isCreated())
@@ -433,7 +444,23 @@ class EventBookingFlowTests {
         event.setEventDate(LocalDateTime.now().plusDays(7));
         event.setTotalTickets(totalTickets);
         event.setTicketPrice(price);
-        return eventRepository.save(event);
+        Event saved = eventRepository.save(event);
+        saveTier(saved, totalTickets, price);
+        return saved;
+    }
+
+    private void saveTier(Event event, int totalTickets, double price) {
+        TicketTier tier = new TicketTier();
+        tier.setEvent(event);
+        tier.setName("GENERAL");
+        tier.setPrice(price);
+        tier.setTotalQuantity(totalTickets);
+        tier.setSoldQuantity(0);
+        ticketTierRepository.save(tier);
+    }
+
+    private Long firstTierId(Long eventId) {
+        return ticketTierRepository.findByEventIdOrderByIdAsc(eventId).get(0).getId();
     }
 
     private String eventRequest(String title, LocalDateTime eventDate, int totalTickets) throws Exception {

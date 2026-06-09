@@ -2,6 +2,7 @@ package com.eventbooking;
 
 import com.eventbooking.entity.Event;
 import com.eventbooking.entity.Role;
+import com.eventbooking.entity.TicketTier;
 import com.eventbooking.entity.User;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.EventRepository;
@@ -9,6 +10,7 @@ import com.eventbooking.repository.FavoriteRepository;
 import com.eventbooking.repository.PaymentRepository;
 import com.eventbooking.repository.ReminderRepository;
 import com.eventbooking.repository.RoleRepository;
+import com.eventbooking.repository.TicketTierRepository;
 import com.eventbooking.repository.TicketRepository;
 import com.eventbooking.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -68,6 +70,9 @@ class Phase4FlowTests {
     private TicketRepository ticketRepository;
 
     @Autowired
+    private TicketTierRepository ticketTierRepository;
+
+    @Autowired
     private FavoriteRepository favoriteRepository;
 
     @Autowired
@@ -84,6 +89,7 @@ class Phase4FlowTests {
         favoriteRepository.deleteAll();
         reminderRepository.deleteAll();
         bookingRepository.deleteAll();
+        ticketTierRepository.deleteAll();
         eventRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -266,7 +272,7 @@ class Phase4FlowTests {
         String bookingJson = mockMvc.perform(post("/api/bookings")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("eventId", eventId, "quantity", quantity))))
+                        .content(json(Map.of("eventId", eventId, "tierId", firstTierId(eventId), "quantity", quantity))))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -294,7 +300,23 @@ class Phase4FlowTests {
         event.setTotalTickets(100);
         event.setTicketPrice(price);
         event.setImageUrl("https://cdn.example.com/" + title.toLowerCase().replace(" ", "-") + ".jpg");
-        return eventRepository.save(event);
+        Event saved = eventRepository.save(event);
+        saveTier(saved, 100, price);
+        return saved;
+    }
+
+    private void saveTier(Event event, int totalTickets, double price) {
+        TicketTier tier = new TicketTier();
+        tier.setEvent(event);
+        tier.setName("GENERAL");
+        tier.setPrice(price);
+        tier.setTotalQuantity(totalTickets);
+        tier.setSoldQuantity(0);
+        ticketTierRepository.save(tier);
+    }
+
+    private Long firstTierId(Long eventId) {
+        return ticketTierRepository.findByEventIdOrderByIdAsc(eventId).get(0).getId();
     }
 
     private String json(Object value) throws Exception {

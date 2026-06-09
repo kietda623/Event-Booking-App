@@ -40,6 +40,10 @@ public class Ticket {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @ManyToOne
+    @JoinColumn(name = "tier_id")
+    private TicketTier tier;
+
     @PrePersist
     void prePersist() {
         if (status == null) {

@@ -13,6 +13,11 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
+    interface NearbyEventDistance {
+        Long getId();
+        Double getDistanceKm();
+    }
+
     @Query("""
             select e from Event e
             where (:upcoming = false or e.eventDate > :now)
@@ -73,6 +78,46 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             nativeQuery = true
     )
     Page<Event> findNearby(@Param("latitude") Double latitude, @Param("longitude") Double longitude, Pageable pageable);
+
+    @Query(
+            value = """
+                    select nearby.id as id, nearby.distance_km as distanceKm
+                    from (
+                        select e.id as id,
+                               (6371 * 2 * asin(sqrt(
+                                   power(sin(radians(e.latitude - :latitude) / 2), 2) +
+                                   cos(radians(:latitude)) * cos(radians(e.latitude)) *
+                                   power(sin(radians(e.longitude - :longitude) / 2), 2)
+                               ))) as distance_km
+                        from events e
+                        where e.latitude is not null
+                          and e.longitude is not null
+                    ) nearby
+                    where nearby.distance_km <= :radius
+                    order by nearby.distance_km asc
+                    """,
+            countQuery = """
+                    select count(*)
+                    from (
+                        select (6371 * 2 * asin(sqrt(
+                                   power(sin(radians(e.latitude - :latitude) / 2), 2) +
+                                   cos(radians(:latitude)) * cos(radians(e.latitude)) *
+                                   power(sin(radians(e.longitude - :longitude) / 2), 2)
+                               ))) as distance_km
+                        from events e
+                        where e.latitude is not null
+                          and e.longitude is not null
+                    ) nearby
+                    where nearby.distance_km <= :radius
+                    """,
+            nativeQuery = true
+    )
+    Page<NearbyEventDistance> findNearbyDistances(
+            @Param("latitude") Double latitude,
+            @Param("longitude") Double longitude,
+            @Param("radius") Double radius,
+            Pageable pageable
+    );
 
     @Lock(LockModeType.OPTIMISTIC_FORCE_INCREMENT)
     @Query("select e from Event e where e.id = :id")

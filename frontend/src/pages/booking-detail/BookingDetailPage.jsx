@@ -45,6 +45,18 @@ export function BookingDetailPage() {
             <dt>Quantity</dt>
             <dd>{booking.quantity}</dd>
           </div>
+          {booking.tierName && (
+            <div>
+              <dt>Tier</dt>
+              <dd>{booking.tierName}</dd>
+            </div>
+          )}
+          {(booking.seatNumbers || []).length > 0 && (
+            <div>
+              <dt>Seats</dt>
+              <dd>{booking.seatNumbers.join(', ')}</dd>
+            </div>
+          )}
           <div>
             <dt>Total</dt>
             <dd>{formatCurrency(booking.totalPrice)}</dd>

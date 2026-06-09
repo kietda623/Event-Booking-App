@@ -35,4 +35,11 @@ public class Booking {
     @ManyToOne
     @JoinColumn(name = "event_id")
     private Event event;
+
+    @ManyToOne
+    @JoinColumn(name = "tier_id")
+    private TicketTier tier;
+
+    @Column(length = 1000)
+    private String seatNumbers;
 }

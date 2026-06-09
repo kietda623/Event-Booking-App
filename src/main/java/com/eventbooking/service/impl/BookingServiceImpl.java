@@ -7,6 +7,7 @@ import com.eventbooking.entity.Booking;
 import com.eventbooking.entity.Event;
 import com.eventbooking.entity.Refund;
 import com.eventbooking.entity.Ticket;
+import com.eventbooking.entity.TicketTier;
 import com.eventbooking.entity.User;
 import com.eventbooking.exception.BusinessException;
 import com.eventbooking.exception.ResourceNotFoundException;
@@ -14,9 +15,11 @@ import com.eventbooking.notification.NotificationService;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.RefundRepository;
+import com.eventbooking.repository.TicketTierRepository;
 import com.eventbooking.repository.TicketRepository;
 import com.eventbooking.repository.UserRepository;
 import com.eventbooking.service.BookingService;
+import com.eventbooking.service.SeatService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class BookingServiceImpl implements BookingService {
@@ -38,6 +42,8 @@ public class BookingServiceImpl implements BookingService {
     private final RefundRepository refundRepository;
     private final TicketRepository ticketRepository;
     private final NotificationService notificationService;
+    private final TicketTierRepository ticketTierRepository;
+    private final SeatService seatService;
 
     @Override
     @Transactional
@@ -49,19 +55,37 @@ public class BookingServiceImpl implements BookingService {
 
         Event event = eventRepository.findByIdForBooking(request.getEventId())
                 .orElseThrow(() -> new ResourceNotFoundException("EVENT_NOT_FOUND", "Event not found"));
-        int totalTickets = event.getTotalTickets() != null ? event.getTotalTickets() : 0;
-        int booked = bookingRepository.sumBookedQuantityByEventId(event.getId()).intValue();
-        if (quantity > Math.max(totalTickets - booked, 0)) {
-            throw new BusinessException("EVENT_SOLD_OUT", "Not enough tickets available", HttpStatus.CONFLICT);
+
+        TicketTier tier = ticketTierRepository.findByIdForBooking(request.getTierId())
+                .orElseThrow(() -> new ResourceNotFoundException("TIER_NOT_FOUND", "Ticket tier not found"));
+        if (!tier.getEvent().getId().equals(event.getId())) {
+            throw new ResourceNotFoundException("TIER_NOT_FOUND", "Ticket tier not found");
         }
+        int totalTickets = tier.getTotalQuantity() != null ? tier.getTotalQuantity() : 0;
+        int soldTickets = tier.getSoldQuantity() != null ? tier.getSoldQuantity() : 0;
+        if (quantity > Math.max(totalTickets - soldTickets, 0)) {
+            throw new BusinessException("TIER_SOLD_OUT", "Ticket tier is sold out", HttpStatus.CONFLICT);
+        }
+
+        List<String> seatNumbers = normalizeSeatNumbers(request.getSeatNumbers());
+        if (!seatNumbers.isEmpty() && seatNumbers.size() != quantity) {
+            throw new BusinessException("INVALID_SEATS", "Seat count must match booking quantity", HttpStatus.BAD_REQUEST);
+        }
+        User user = currentUser();
+        seatService.validateHeldSeats(event, tier, user, seatNumbers);
+
+        tier.setSoldQuantity(soldTickets + quantity);
+        ticketTierRepository.save(tier);
 
         Booking booking = new Booking();
         booking.setEvent(event);
-        booking.setUser(currentUser());
+        booking.setUser(user);
+        booking.setTier(tier);
         booking.setQuantity(quantity);
         booking.setBookingDate(LocalDateTime.now());
-        booking.setTotalPrice((event.getTicketPrice() != null ? event.getTicketPrice() : 0.0) * quantity);
+        booking.setTotalPrice((tier.getPrice() != null ? tier.getPrice() : 0.0) * quantity);
         booking.setStatus("PENDING");
+        booking.setSeatNumbers(String.join(",", seatNumbers));
 
         return toResponse(bookingRepository.save(booking));
     }
@@ -86,6 +110,7 @@ public class BookingServiceImpl implements BookingService {
             String oldStatus = booking.getStatus();
             booking.setStatus("CANCELLED");
             Booking saved = bookingRepository.save(booking);
+            releaseInventory(saved);
             logStatusTransition(saved, oldStatus, saved.getStatus());
             return toResponse(saved);
         }
@@ -93,6 +118,7 @@ public class BookingServiceImpl implements BookingService {
             String oldStatus = booking.getStatus();
             booking.setStatus("CANCELLED");
             Booking saved = bookingRepository.save(booking);
+            releaseInventory(saved);
             logStatusTransition(saved, oldStatus, saved.getStatus());
 
             Refund refund = new Refund();
@@ -122,6 +148,7 @@ public class BookingServiceImpl implements BookingService {
         String oldStatus = booking.getStatus();
         booking.setStatus("CANCELLED");
         Booking saved = bookingRepository.save(booking);
+        releaseInventory(saved);
         logStatusTransition(saved, oldStatus, saved.getStatus());
         return toResponse(saved);
     }
@@ -155,8 +182,46 @@ public class BookingServiceImpl implements BookingService {
                 booking.getStatus(),
                 refundRepository.findFirstByBookingIdOrderByIdDesc(booking.getId())
                         .map(Refund::getStatus)
-                        .orElse(null)
+                        .orElse(null),
+                booking.getTier() == null ? null : booking.getTier().getId(),
+                booking.getTier() == null ? null : booking.getTier().getName(),
+                splitSeatNumbers(booking.getSeatNumbers())
         );
+    }
+
+    private List<String> normalizeSeatNumbers(List<String> seatNumbers) {
+        if (seatNumbers == null) {
+            return List.of();
+        }
+        return seatNumbers.stream()
+                .filter(seatNumber -> seatNumber != null && !seatNumber.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+    }
+
+    private List<String> splitSeatNumbers(String seatNumbers) {
+        if (seatNumbers == null || seatNumbers.isBlank()) {
+            return List.of();
+        }
+        return List.of(seatNumbers.split(",")).stream()
+                .filter(seatNumber -> !seatNumber.isBlank())
+                .map(String::trim)
+                .toList();
+    }
+
+    private void releaseInventory(Booking booking) {
+        if (booking.getTier() != null) {
+            TicketTier tier = ticketTierRepository.findByIdForBooking(booking.getTier().getId())
+                    .orElse(null);
+            if (tier != null) {
+                int sold = tier.getSoldQuantity() != null ? tier.getSoldQuantity() : 0;
+                int quantity = booking.getQuantity() != null ? booking.getQuantity() : 0;
+                tier.setSoldQuantity(Math.max(sold - quantity, 0));
+                ticketTierRepository.save(tier);
+            }
+        }
+        seatService.releaseBookingSeats(booking);
     }
 
     private <T> PageResponse<T> toPageResponse(Page<T> page) {
