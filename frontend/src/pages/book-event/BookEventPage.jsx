@@ -84,7 +84,7 @@ export function BookEventPage() {
           <span>{selectedTier?.availableQuantity ?? event.availableTickets ?? 0} tickets available</span>
           {selectedSeats.length > 0 && <span>Seats: {selectedSeats.join(', ')}</span>}
         </div>
-        {tiers.length > 0 && (
+        {tiers.length > 1 && (
           <div className="tier-grid selectable">
             {tiers.map((tier) => (
               <button
