@@ -4,6 +4,7 @@ import com.eventbooking.dto.auth.AuthResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
@@ -19,9 +20,14 @@ public class AuthCookieService {
     private static final Duration REFRESH_DURATION = Duration.ofDays(7);
 
     private final JwtService jwtService;
+    private final boolean cookieSecure;
 
-    public AuthCookieService(JwtService jwtService) {
+    public AuthCookieService(
+            JwtService jwtService,
+            @Value("${app.auth.cookie-secure:false}") boolean cookieSecure
+    ) {
         this.jwtService = jwtService;
+        this.cookieSecure = cookieSecure;
     }
 
     public void addAuthCookies(HttpServletResponse response, AuthResponse authResponse) {
@@ -49,7 +55,7 @@ public class AuthCookieService {
     private void addCookie(HttpServletResponse response, String name, String value, Duration maxAge) {
         ResponseCookie cookie = ResponseCookie.from(name, value == null ? "" : value)
                 .httpOnly(true)
-                .secure(true)
+                .secure(cookieSecure)
                 .sameSite("Strict")
                 .path("/")
                 .maxAge(maxAge)
