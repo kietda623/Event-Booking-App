@@ -23,6 +23,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -104,9 +105,16 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
+    @Transactional
     @CacheEvict(value = "events", allEntries = true)
     public void delete(Long id) {
         Event event = findEvent(id);
+        if (bookingRepository.countByEventId(id) > 0) {
+            throw new BusinessException("EVENT_HAS_BOOKINGS",
+                    "Event cannot be deleted after bookings exist",
+                    HttpStatus.CONFLICT);
+        }
+        ticketTierRepository.deleteAll(ticketTierRepository.findByEventIdOrderByIdAsc(id));
         eventRepository.delete(event);
     }
 

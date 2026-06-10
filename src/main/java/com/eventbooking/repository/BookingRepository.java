@@ -29,6 +29,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     long countByStatus(String status);
 
+    long countByEventId(Long eventId);
+
     @Query("select coalesce(sum(b.totalPrice), 0) from Booking b where b.status = 'PAID'")
     Double sumPaidRevenue();
 
