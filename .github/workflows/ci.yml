@@ -111,7 +111,7 @@ jobs:
             title="$1"
             file="$2"
             if [ -f "$file" ]; then
-              message="$(tail -n 120 "$file")"
+              message="$(tail -c 16000 "$file")"
               message="${message//'%'/'%25'}"
               message="${message//$'\r'/'%0D'}"
               message="${message//$'\n'/'%0A'}"
