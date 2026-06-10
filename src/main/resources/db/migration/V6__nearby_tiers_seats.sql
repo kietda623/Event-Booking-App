@@ -7,7 +7,7 @@ create table if not exists ticket_tiers (
     sold_quantity int null default 0,
     description varchar(1000) null,
     created_at datetime null,
-    version bigint null,
+    version bigint not null default 0,
     primary key (id),
     constraint fk_ticket_tiers_event foreign key (event_id) references events(id)
 );

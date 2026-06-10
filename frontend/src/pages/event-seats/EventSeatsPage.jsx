@@ -152,7 +152,7 @@ export function EventSeatsPage() {
       </div>
       <div className="row-actions">
         <button className="button primary" type="button" onClick={onConfirm} disabled={selectedSeats.length === 0 || holdMutation.isPending}>
-          {holdMutation.isPending ? 'Holding seats...' : 'Confirm'}
+          {holdMutation.isPending ? 'Holding seats...' : 'Confirm Selection'}
         </button>
       </div>
     </section>
