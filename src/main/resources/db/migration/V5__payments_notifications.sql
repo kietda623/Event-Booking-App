@@ -8,7 +8,7 @@ create index idx_payments_payment_intent on payments(payment_intent_id);
 
 create table if not exists push_subscriptions (
     id bigint not null auto_increment,
-    endpoint varchar(1000) not null,
+    endpoint varchar(767) not null,
     p256dh varchar(255) not null,
     auth varchar(255) not null,
     user_id bigint null,

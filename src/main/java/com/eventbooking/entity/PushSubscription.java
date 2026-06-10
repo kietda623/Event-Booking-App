@@ -15,7 +15,7 @@ public class PushSubscription {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 1000, unique = true)
+    @Column(nullable = false, length = 767, unique = true)
     private String endpoint;
 
     @Column(nullable = false, length = 255)
