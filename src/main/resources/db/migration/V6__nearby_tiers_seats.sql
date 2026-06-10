@@ -15,7 +15,9 @@ create table if not exists ticket_tiers (
 create index idx_ticket_tiers_event on ticket_tiers(event_id);
 
 alter table bookings
-    add column tier_id bigint null,
+    add column tier_id bigint null;
+
+alter table bookings
     add column seat_numbers varchar(1000) null;
 
 alter table bookings

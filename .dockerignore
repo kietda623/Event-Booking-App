@@ -1,0 +1,11 @@
+.git
+.github
+target
+frontend/node_modules
+frontend/dist
+frontend/dist-ssr
+frontend/.vite-verify-dist
+*.log
+.env
+.idea
+.vscode

@@ -2,9 +2,15 @@ alter table favorites
     add column created_at datetime null;
 
 alter table tickets
-    add column status varchar(32) not null default 'ACTIVE',
-    add column checked_in boolean not null default false,
-    add column checked_in_at datetime null,
+    add column status varchar(32) not null default 'ACTIVE';
+
+alter table tickets
+    add column checked_in boolean not null default false;
+
+alter table tickets
+    add column checked_in_at datetime null;
+
+alter table tickets
     add column user_id bigint null;
 
 create table if not exists refunds (

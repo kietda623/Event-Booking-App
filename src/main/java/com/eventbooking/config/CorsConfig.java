@@ -11,6 +11,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 @Configuration
 public class CorsConfig {
@@ -25,9 +26,10 @@ public class CorsConfig {
 
     @PostConstruct
     void validateProdCors() {
-        boolean prod = Arrays.asList(environment.getActiveProfiles()).contains("prod");
-        if (prod && (allowedOrigins == null || allowedOrigins.isBlank())) {
-            throw new IllegalStateException("CORS_ALLOWED_ORIGINS must be set in prod profile");
+        Set<String> activeProfiles = Set.of(environment.getActiveProfiles());
+        boolean strictCorsProfile = activeProfiles.contains("prod") || activeProfiles.contains("staging");
+        if (strictCorsProfile && missingCorsOrigins()) {
+            throw new IllegalStateException("CORS_ALLOWED_ORIGINS must be set in prod or staging profile");
         }
     }
 
@@ -50,5 +52,11 @@ public class CorsConfig {
                 .map(String::trim)
                 .filter(origin -> !origin.isBlank())
                 .toList();
+    }
+
+    private boolean missingCorsOrigins() {
+        return allowedOrigins == null
+                || allowedOrigins.isBlank()
+                || allowedOrigins.contains("${CORS_ALLOWED_ORIGINS");
     }
 }

@@ -1,5 +1,7 @@
 alter table payments
-    add column payment_intent_id varchar(255) null,
+    add column payment_intent_id varchar(255) null;
+
+alter table payments
     add column client_secret varchar(1000) null;
 
 create index idx_payments_payment_intent on payments(payment_intent_id);
