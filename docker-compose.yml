@@ -23,7 +23,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      SPRING_PROFILES_ACTIVE: staging
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-staging}
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
@@ -37,6 +37,12 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       APP_ADMIN_SEED: ${APP_ADMIN_SEED}
+      APP_E2E_SEED: ${APP_E2E_SEED:-false}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin.e2e@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin123!}
+      TEST_USER_EMAIL: ${TEST_USER_EMAIL:-user.e2e@example.com}
+      TEST_USER_PASSWORD: ${TEST_USER_PASSWORD:-User123!}
+      E2E_CHECKIN_TICKET_CODE: ${E2E_CHECKIN_TICKET_CODE:-E2E-CHECKIN-0001}
     ports:
       - "8080:8080"
 
@@ -45,6 +51,7 @@ services:
       context: ./frontend
       args:
         VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
+        VITE_ENABLE_MOCK_PAYMENT: ${VITE_ENABLE_MOCK_PAYMENT:-false}
     depends_on:
       - backend
     ports:

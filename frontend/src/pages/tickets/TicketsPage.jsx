@@ -32,12 +32,12 @@ export function TicketsPage() {
         <>
           <div className="ticket-grid">
             {tickets.map((ticket) => (
-              <article className="ticket-card" key={ticket.ticketId}>
+              <article className="ticket-card" key={ticket.ticketId} data-testid="ticket-card">
                 <div>
                   <p className="eyebrow">{ticket.ticketType || 'GENERAL'}</p>
                   <h3>{ticket.eventTitle}</h3>
                 </div>
-                <code>{ticket.ticketCode}</code>
+                <code data-testid="ticket-code">{ticket.ticketCode}</code>
                 <dl className="info-list compact">
                   <div>
                     <dt>Date</dt>

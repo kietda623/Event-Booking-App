@@ -52,7 +52,7 @@ export function AdminEventsPage() {
       ) : (
         <>
           <div className="table-wrap">
-            <table>
+            <table data-testid="admin-events-table">
               <thead>
                 <tr>
                   <th>Title</th>
@@ -65,7 +65,7 @@ export function AdminEventsPage() {
               </thead>
               <tbody>
                 {events.map((event) => (
-                  <tr key={event.id}>
+                  <tr key={event.id} data-testid="admin-event-row" data-event-id={event.id}>
                     <td>{event.title}</td>
                     <td>{formatDateTime(event.eventDate)}</td>
                     <td>{event.location}</td>

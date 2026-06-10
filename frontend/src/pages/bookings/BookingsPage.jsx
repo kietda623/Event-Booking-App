@@ -47,12 +47,12 @@ export function BookingsPage() {
               </thead>
               <tbody>
                 {bookings.map((booking) => (
-                  <tr key={booking.bookingId}>
+                  <tr key={booking.bookingId} data-testid="booking-row" data-booking-id={booking.bookingId}>
                     <td>{booking.eventTitle}</td>
                     <td>{formatDateTime(booking.bookingTime)}</td>
                     <td>{booking.quantity}</td>
                     <td>{formatCurrency(booking.totalPrice)}</td>
-                    <td>
+                    <td data-testid="booking-status">
                       <StatusBadge status={booking.status} />
                     </td>
                     <td className="row-actions">

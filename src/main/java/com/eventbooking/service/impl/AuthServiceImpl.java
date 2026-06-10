@@ -169,6 +169,9 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private String roleName(User user) {
+        if (user.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName()))) {
+            return "ADMIN";
+        }
         return user.getRoles().stream()
                 .findFirst()
                 .map(Role::getName)

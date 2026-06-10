@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { eventsApi } from '../../api/events'
 import { favoritesApi } from '../../api/favorites'
@@ -18,11 +19,13 @@ const filters = [
 export function EventsPage() {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
-  const [type, setType] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const [coords, setCoords] = useState(null)
   const [locationStatus, setLocationStatus] = useState('idle')
+  const typeParam = searchParams.get('type') || ''
+  const type = filters.some((filter) => filter.value === typeParam) ? typeParam : ''
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -76,12 +79,12 @@ export function EventsPage() {
     },
   })
 
-  const events = query.data?.content || []
   const filteredEvents = useMemo(() => {
+    const events = query.data?.content || []
     const term = search.trim().toLowerCase()
     if (!term) return events
     return events.filter((event) => event.title?.toLowerCase().includes(term))
-  }, [events, search])
+  }, [query.data?.content, search])
   const favoriteIds = useMemo(
     () => new Set((favoritesQuery.data?.content || []).map((event) => event.id)),
     [favoritesQuery.data],
@@ -108,8 +111,14 @@ export function EventsPage() {
             type="button"
             className={`segmented-button ${type === filter.value ? 'active' : ''}`}
             onClick={() => {
-              setType(filter.value)
               setPage(0)
+              const nextParams = new URLSearchParams(searchParams)
+              if (filter.value) {
+                nextParams.set('type', filter.value)
+              } else {
+                nextParams.delete('type')
+              }
+              setSearchParams(nextParams)
             }}
           >
             {filter.label}

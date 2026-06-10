@@ -33,7 +33,7 @@ export function BookEventPage() {
   })
 
   const event = eventQuery.data
-  const tiers = event?.tiers || []
+  const tiers = useMemo(() => event?.tiers || [], [event?.tiers])
   const selectedTier = tiers.find((tier) => String(tier.id) === String(selectedTierId))
   const maxTickets = Math.max(selectedTier?.availableQuantity || event?.availableTickets || 1, 1)
   const hasSeatLock = selectedSeats.length > 0
@@ -91,6 +91,7 @@ export function BookEventPage() {
                 type="button"
                 key={tier.id}
                 className={`tier-card selectable ${String(selectedTierId) === String(tier.id) ? 'active' : ''}`}
+                data-testid="tier-option"
                 onClick={() => setSelectedTierId(String(tier.id))}
                 disabled={hasSeatLock && String(selectedTierId) !== String(tier.id)}
               >

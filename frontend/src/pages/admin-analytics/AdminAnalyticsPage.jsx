@@ -30,10 +30,10 @@ export function AdminAnalyticsPage() {
         </div>
       </div>
       <div className="metric-grid">
-        <Metric label="Events" value={analytics.totalEvents} />
-        <Metric label="Users" value={analytics.totalUsers} />
-        <Metric label="Bookings" value={analytics.totalBookings} />
-        <Metric label="Revenue" value={formatCurrency(analytics.totalRevenue)} />
+        <Metric label="Total Events" value={analytics.totalEvents} testId="metric-total-events" />
+        <Metric label="Total Users" value={analytics.totalUsers} testId="metric-total-users" />
+        <Metric label="Total Bookings" value={analytics.totalBookings} testId="metric-total-bookings" />
+        <Metric label="Total Revenue" value={formatCurrency(analytics.totalRevenue)} testId="metric-total-revenue" />
       </div>
       <div className="analytics-grid">
         <section className="analytics-panel">
@@ -75,9 +75,9 @@ export function AdminAnalyticsPage() {
   )
 }
 
-function Metric({ label, value }) {
+function Metric({ label, value, testId }) {
   return (
-    <div className="metric-card">
+    <div className="metric-card" data-testid={testId}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>

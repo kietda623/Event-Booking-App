@@ -61,7 +61,16 @@ export function AdminEventFormPage() {
   }, [eventQuery.data])
 
   const mutation = useMutation({
-    mutationFn: (payload) => (isEditing ? eventsApi.update(id, payload) : eventsApi.create(payload)),
+    mutationFn: async ({ eventPayload, initialTierPayload }) => {
+      if (isEditing) {
+        return eventsApi.update(id, eventPayload)
+      }
+      const created = await eventsApi.create(eventPayload)
+      if (initialTierPayload?.name) {
+        await eventsApi.createTier(created.id, initialTierPayload)
+      }
+      return created
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-events'] })
       queryClient.invalidateQueries({ queryKey: ['events'] })
@@ -124,7 +133,7 @@ export function AdminEventFormPage() {
   const onSubmit = (event) => {
     event.preventDefault()
     setApiError(null)
-    mutation.mutate({
+    const eventPayload = {
       title: form.title,
       description: form.description,
       eventDate: form.startTime,
@@ -134,7 +143,17 @@ export function AdminEventFormPage() {
       imageUrl: form.imageUrl || null,
       latitude: form.latitude === '' ? null : Number(form.latitude),
       longitude: form.longitude === '' ? null : Number(form.longitude),
-    })
+    }
+    const initialTierPayload =
+      !isEditing && tierForm.name.trim()
+        ? {
+            name: tierForm.name,
+            price: tierForm.price === '' ? 0 : Number(tierForm.price),
+            totalQuantity: tierForm.totalQuantity === '' ? 0 : Number(tierForm.totalQuantity),
+            description: tierForm.description || null,
+          }
+        : null
+    mutation.mutate({ eventPayload, initialTierPayload })
   }
 
   return (
@@ -284,7 +303,24 @@ export function AdminEventFormPage() {
                 <h2>Ticket tiers</h2>
               </div>
             </div>
-            <div className="state-box">Save event before managing tiers.</div>
+            <div className="form-grid">
+              <label>
+                Tier name
+                <input value={tierForm.name} onChange={(event) => setTierField('name', event.target.value)} />
+              </label>
+              <label>
+                Tier price
+                <input type="number" min="0" step="0.01" value={tierForm.price} onChange={(event) => setTierField('price', event.target.value)} />
+              </label>
+              <label>
+                Total quantity
+                <input type="number" min="0" value={tierForm.totalQuantity} onChange={(event) => setTierField('totalQuantity', event.target.value)} />
+              </label>
+            </div>
+            <label>
+              Tier description
+              <textarea value={tierForm.description} onChange={(event) => setTierField('description', event.target.value)} rows="3" />
+            </label>
           </section>
         )}
         <button className="button primary" type="submit" disabled={mutation.isPending}>

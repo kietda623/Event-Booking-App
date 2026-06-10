@@ -47,7 +47,7 @@ export function EventDetailPage() {
       <div className="detail-panel">
         <p className="eyebrow">{formatDateTime(event.eventDate)}</p>
         <div className="title-row">
-          <h1>{event.title}</h1>
+          <h1 data-testid="event-detail-title">{event.title}</h1>
           {user && (
             <FavoriteButton
               active={isFavorited}
@@ -65,7 +65,7 @@ export function EventDetailPage() {
           </div>
           <div>
             <dt>Price</dt>
-            <dd>{formatCurrency(event.price)}</dd>
+            <dd data-testid="event-detail-price">{formatCurrency(event.price)}</dd>
           </div>
           <div>
             <dt>Available tickets</dt>
@@ -75,7 +75,7 @@ export function EventDetailPage() {
         {tiers.length > 0 && (
           <div className="tier-grid">
             {tiers.map((tier) => (
-              <div className="tier-card" key={tier.id}>
+              <div className="tier-card" key={tier.id} data-testid="tier-card">
                 <div>
                   <strong>{tier.name}</strong>
                   <span>{tier.availableQuantity ?? 0} left</span>
@@ -88,7 +88,7 @@ export function EventDetailPage() {
         )}
         {user && (
           <div className="row-actions">
-            <Link className="button primary" to={bookLink}>
+            <Link className="button primary" to={bookLink} data-testid="book-now">
               Book Now
             </Link>
             <Link className="button ghost" to={`/events/${event.id}/seats`}>
@@ -97,8 +97,8 @@ export function EventDetailPage() {
           </div>
         )}
         {!user && (
-          <Link className="button primary" to="/login">
-            Login to book
+          <Link className="button primary" to="/login" data-testid="guest-book-now">
+            Book Now
           </Link>
         )}
       </div>

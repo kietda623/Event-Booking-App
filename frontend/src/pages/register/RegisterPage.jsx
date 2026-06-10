@@ -11,7 +11,7 @@ export function RegisterPage() {
 
   const mutation = useMutation({
     mutationFn: authApi.register,
-    onSuccess: () => navigate('/login'),
+    onSuccess: () => navigate('/login', { state: { successMessage: 'Registration successful' } }),
     onError: setApiError,
   })
 

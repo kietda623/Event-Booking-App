@@ -30,7 +30,9 @@ export function BookingDetailPage() {
           <p className="eyebrow">Booking detail</p>
           <h1>{booking.eventTitle}</h1>
         </div>
-        <StatusBadge status={booking.status} />
+        <span data-testid="booking-status">
+          <StatusBadge status={booking.status} />
+        </span>
       </div>
       <div className="form-card">
         {booking.status === 'CANCELLED' && booking.refundStatus && (

@@ -12,7 +12,7 @@ import { formatCurrency } from '../../utils/format'
 
 const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || ''
 const stripePromise = stripeKey ? loadStripe(stripeKey) : null
-const canUseMock = import.meta.env.VITE_ENV === 'development'
+const canUseMock = import.meta.env.VITE_ENV === 'development' || import.meta.env.VITE_ENABLE_MOCK_PAYMENT === 'true'
 const methods = canUseMock ? ['STRIPE', 'MOCK'] : ['STRIPE']
 
 export function BookingPayPage() {
@@ -96,7 +96,7 @@ function BookingPaymentForm({ booking, bookingId }) {
         </div>
         <label>
           Payment method
-          <select value={method} onChange={(event) => setMethod(event.target.value)}>
+          <select data-testid="payment-method" value={method} onChange={(event) => setMethod(event.target.value)}>
             {methods.map((item) => (
               <option key={item} value={item}>
                 {item}

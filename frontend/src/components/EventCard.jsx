@@ -8,7 +8,7 @@ const FALLBACK_IMAGE =
 export function EventCard({ event, isFavorited = false, favoriteBusy = false, onFavoriteToggle }) {
   const hasDistance = event.distanceKm !== null && event.distanceKm !== undefined
   return (
-    <article className="event-card">
+    <article className="event-card" data-testid="event-card" data-event-id={event.id}>
       {onFavoriteToggle && (
         <FavoriteButton
           active={isFavorited}
@@ -23,12 +23,16 @@ export function EventCard({ event, isFavorited = false, favoriteBusy = false, on
           <span>{formatDateTime(event.eventDate)}</span>
           <span>{formatCurrency(event.price)}</span>
         </div>
-        {hasDistance && <span className="distance-badge">{Number(event.distanceKm).toFixed(1)} km away</span>}
-        <h3>{event.title}</h3>
+        {hasDistance && (
+          <span className="distance-badge" data-testid="distance-badge">
+            {Number(event.distanceKm).toFixed(1)} km away
+          </span>
+        )}
+        <h3 data-testid="event-card-title">{event.title}</h3>
         <p>{event.location || 'Location pending'}</p>
         <div className="event-card-footer">
           <span>{event.availableTickets ?? 0} tickets left</span>
-          <Link to={`/events/${event.id}`} className="button small">
+          <Link to={`/events/${event.id}`} className="button small" data-testid="event-card-view">
             View
           </Link>
         </div>

@@ -32,7 +32,7 @@ export function EventSeatsPage() {
   })
 
   const event = eventQuery.data
-  const tiers = event?.tiers || []
+  const tiers = useMemo(() => event?.tiers || [], [event?.tiers])
   const selectedTier = tiers.find((tier) => String(tier.id) === String(selectedTierId))
   const seats = seatsQuery.data || []
   const selectedSeatSet = useMemo(() => new Set(selectedSeats), [selectedSeats])

@@ -35,6 +35,7 @@ export function LoginPage() {
         <h1>Login</h1>
       </div>
       <form className="form-card" onSubmit={onSubmit}>
+        {location.state?.successMessage && <div className="toast">{location.state.successMessage}</div>}
         <FormError error={apiError} />
         <label>
           Email

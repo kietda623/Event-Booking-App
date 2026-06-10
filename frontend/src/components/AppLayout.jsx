@@ -14,7 +14,7 @@ export function AppLayout() {
       // Local logout still proceeds if the session already expired.
     }
     logout()
-    navigate('/')
+    navigate('/login')
   }
 
   return (
