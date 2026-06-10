@@ -105,7 +105,29 @@ jobs:
         run: sleep 30
 
       - name: Run smoke test
-        run: chmod +x scripts/smoke-test.sh && scripts/smoke-test.sh
+        run: |
+          set -o pipefail
+          annotate_failure() {
+            title="$1"
+            file="$2"
+            if [ -f "$file" ]; then
+              message="$(tail -n 120 "$file")"
+              message="${message//'%'/'%25'}"
+              message="${message//$'\r'/'%0D'}"
+              message="${message//$'\n'/'%0A'}"
+              echo "::error title=${title}::${message}"
+            fi
+          }
+
+          chmod +x scripts/smoke-test.sh
+          if ! scripts/smoke-test.sh 2>&1 | tee smoke-test.log; then
+            docker compose ps 2>&1 | tee compose-ps.log || true
+            docker compose logs --tail=200 db backend frontend > compose-logs.log 2>&1 || true
+            annotate_failure "smoke test failed" smoke-test.log
+            annotate_failure "docker compose ps" compose-ps.log
+            annotate_failure "docker compose logs" compose-logs.log
+            exit 1
+          fi
 
       - name: Stop containers
         if: always()
