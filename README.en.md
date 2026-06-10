@@ -2,17 +2,17 @@
 
 [Tiếng Việt](README.md) | [English](README.en.md)
 
-Nền tảng đặt vé sự kiện full-stack, gồm backend Spring Boot và frontend React + Vite. Ứng dụng hỗ trợ duyệt sự kiện, đặt vé, thanh toán, quản lý vé, yêu thích sự kiện, check-in vé và màn hình quản trị.
+A full-stack event booking platform built with Spring Boot and React + Vite. The app supports event discovery, bookings, payments, tickets, favorites, ticket check-in, and admin operations.
 
-## Tính năng chính
+## Key Features
 
-- Đăng ký, đăng nhập, refresh token và đăng xuất.
-- Duyệt sự kiện theo danh sách, phổ biến, sắp diễn ra và gần vị trí người dùng.
-- Xem chi tiết sự kiện, hạng vé, sơ đồ ghế và giữ ghế tạm thời.
-- Đặt vé, thanh toán qua Stripe hoặc mock payment cho E2E/staging.
-- Quản lý booking, hủy booking, xem vé và check-in bằng mã vé.
-- Yêu thích sự kiện, cập nhật hồ sơ, nhắc lịch và push subscription.
-- Admin quản lý sự kiện, hạng vé, booking theo sự kiện và xem analytics.
+- Register, login, refresh token, and logout.
+- Browse events by all, popular, upcoming, and nearby filters.
+- View event details, ticket tiers, seat maps, and temporary seat holds.
+- Create bookings, pay with Stripe or E2E/staging mock payment, and generate tickets.
+- Manage bookings, cancel bookings, view tickets, and check tickets in by code.
+- Favorite events, update user profile, configure reminders, and manage push subscriptions.
+- Admin event management, ticket tier management, event booking list, and analytics.
 
 ## Tech Stack
 
@@ -20,49 +20,49 @@ Nền tảng đặt vé sự kiện full-stack, gồm backend Spring Boot và fr
 - **Frontend:** React 19, Vite, Zustand, TanStack Query, React Router, Stripe Elements
 - **Testing:** JUnit + H2, Playwright E2E
 - **Infrastructure:** Docker Compose, Nginx, MySQL 8.0
-- **CI/CD:** GitHub Actions với backend tests, frontend build, Docker smoke test và Playwright E2E
+- **CI/CD:** GitHub Actions with backend tests, frontend build, Docker smoke test, and Playwright E2E
 
 ---
 
-## Yêu cầu
+## Requirements
 
 - JDK 17
-- Maven Wrapper đã có sẵn: `mvnw` / `mvnw.cmd`
-- Node.js 20+ cho frontend và E2E
-- MySQL 8.0 nếu chạy backend local
-- Docker Desktop nếu chạy staging stack bằng Docker Compose
-- H2 được dùng tự động cho test backend
+- Maven Wrapper included as `mvnw` / `mvnw.cmd`
+- Node.js 20+ for frontend and E2E
+- MySQL 8.0 for local backend runtime
+- Docker Desktop for the Docker Compose staging stack
+- H2 is used automatically for backend tests
 
-**Windows PowerShell - cấu hình JAVA_HOME:**
+**Windows PowerShell - set JAVA_HOME:**
 
 ```powershell
 $env:JAVA_HOME='C:\path\to\jdk-17'
 $env:Path="$env:JAVA_HOME\bin;$env:Path"
 ```
 
-Kiểm tra:
+Verify:
 
 ```powershell
 java -version
 ```
 
-Kết quả nên hiển thị Java 17.
+The output should show Java 17.
 
 ---
 
-## Chạy local
+## Local Setup
 
-### 1. Tạo database
+### 1. Create the database
 
-Backend local mặc định dùng database `event_booking`:
+The local backend defaults to the `event_booking` database:
 
 ```sql
 CREATE DATABASE event_booking;
 ```
 
-### 2. Cấu hình biến môi trường cho backend
+### 2. Configure backend environment variables
 
-`src/main/resources/application.properties` đọc cấu hình từ environment variables. Ví dụ trên PowerShell:
+`src/main/resources/application.properties` reads configuration from environment variables. Example for PowerShell:
 
 ```powershell
 $env:DB_URL='jdbc:mysql://localhost:3306/event_booking'
@@ -73,24 +73,24 @@ $env:JWT_EXPIRY_MINUTES='1440'
 $env:CORS_ALLOWED_ORIGINS='http://localhost:5173'
 ```
 
-Các biến payment, mail và push có giá trị mặc định rỗng nên có thể bỏ qua khi chạy local cơ bản.
+Payment, mail, and push variables default to empty values, so they can be skipped for a basic local run.
 
-### 3. Chạy backend
+### 3. Run the backend
 
-Chạy từ thư mục root của project:
+Run from the project root:
 
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
 
-Backend chạy tại `http://localhost:8080`.
+The backend starts at `http://localhost:8080`.
 
-Tài liệu API:
+API documentation:
 
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - OpenAPI YAML: `http://localhost:8080/v3/api-docs.yaml`
 
-### 4. Chạy frontend
+### 4. Run the frontend
 
 ```powershell
 cd frontend
@@ -98,26 +98,26 @@ npm install
 npm run dev
 ```
 
-Frontend chạy tại `http://localhost:5173`.
+The frontend starts at `http://localhost:5173`.
 
 ---
 
-## Chạy bằng Docker Compose
+## Docker Compose
 
-Docker Compose dùng profile staging và MySQL database `eventbooking`.
+Docker Compose uses the staging profile and the MySQL database name `eventbooking`.
 
 ```powershell
 Copy-Item .env.example .env
 docker compose up --build
 ```
 
-Các service:
+Services:
 
 | Service | URL / Port |
 |---|---|
 | Frontend | `http://localhost` |
 | Backend | `http://localhost:8080` |
-| MySQL | `3306` trong Docker network |
+| MySQL | `3306` inside the Docker network |
 
 Smoke test:
 
@@ -125,11 +125,11 @@ Smoke test:
 bash scripts/smoke-test.sh
 ```
 
-> Không commit `.env`. File này đã nằm trong `.gitignore`.
+> Do not commit `.env`. It is already listed in `.gitignore`.
 
 ---
 
-## Chạy test
+## Running Tests
 
 ### Backend
 
@@ -148,7 +148,7 @@ npm run build
 
 ### Playwright E2E
 
-E2E cần ứng dụng đang chạy. Với staging Docker, bật seed và mock payment:
+E2E requires the app to be running. For the Docker staging stack, enable E2E seed data and mock payment:
 
 ```powershell
 Copy-Item .env.example .env
@@ -158,7 +158,7 @@ $env:VITE_ENABLE_MOCK_PAYMENT='true'
 docker compose up -d --build
 ```
 
-Sau đó chạy test:
+Then run the tests:
 
 ```powershell
 cd e2e
@@ -168,13 +168,13 @@ npx playwright install chromium
 npx playwright test
 ```
 
-Playwright report được tạo trong `e2e/playwright-report/`.
+The Playwright report is generated in `e2e/playwright-report/`.
 
 ---
 
 ## API Overview
 
-Response dùng envelope thống nhất:
+All responses use a unified envelope:
 
 ```json
 { "success": true, "message": "...", "data": {} }
@@ -184,7 +184,7 @@ Response dùng envelope thống nhất:
 { "success": false, "code": "ERROR_CODE", "message": "...", "errors": [] }
 ```
 
-| Nhóm | Endpoint | Quyền |
+| Group | Endpoint | Auth |
 |---|---|---|
 | Auth | `POST /api/auth/register` | Public |
 | Auth | `POST /api/auth/login` | Public |
@@ -229,7 +229,7 @@ Full contract: `http://localhost:8080/v3/api-docs.yaml`
 
 ---
 
-## Cấu trúc project
+## Project Structure
 
 ```text
 /
@@ -276,22 +276,22 @@ Full contract: `http://localhost:8080/v3/api-docs.yaml`
 
 ## CI/CD
 
-GitHub Actions chạy trên `main` và `duygri` cho cả push và pull request.
+GitHub Actions runs on `main` and `duygri` for both push and pull request events.
 
-Pipeline gồm:
+Pipeline:
 
-1. **Backend tests** - chạy `./mvnw test`.
-2. **Frontend build** - chạy `npm ci` và `npm run build`.
-3. **Docker Compose smoke test** - build container, start stack và chạy `scripts/smoke-test.sh`.
-4. **Playwright E2E** - start staging stack với profile `staging,e2e`, seed dữ liệu test và chạy Chromium E2E.
+1. **Backend tests** - runs `./mvnw test`.
+2. **Frontend build** - runs `npm ci` and `npm run build`.
+3. **Docker Compose smoke test** - builds containers, starts the stack, and runs `scripts/smoke-test.sh`.
+4. **Playwright E2E** - starts the staging stack with the `staging,e2e` profile, seeds test data, and runs Chromium E2E.
 
-Playwright HTML report được upload làm artifact khi job E2E fail.
+The Playwright HTML report is uploaded as an artifact when the E2E job fails.
 
 ---
 
-## Ghi chú bảo mật
+## Security Notes
 
-- Không commit `.env` hoặc secret thật.
-- `JWT_SECRET`, Stripe key, mail key và VAPID key phải lấy từ môi trường deploy.
-- Staging hardcode `app.admin.seed=false`; seed E2E chỉ chạy khi bật profile `e2e` và `APP_E2E_SEED=true`.
-- Local token storage phục vụ MVP; khi lên production nên ưu tiên HttpOnly cookie và refresh-token flow đầy đủ.
+- Never commit `.env` or real secrets.
+- `JWT_SECRET`, Stripe keys, mail keys, and VAPID keys must come from the deployment environment.
+- Staging hardcodes `app.admin.seed=false`; E2E seed data only runs when profile `e2e` and `APP_E2E_SEED=true` are enabled.
+- Local token storage is acceptable for MVP; production should prefer HttpOnly cookies and a complete refresh-token flow.
