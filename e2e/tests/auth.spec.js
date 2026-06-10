@@ -37,7 +37,7 @@ test.describe('auth flows', () => {
     await page.getByLabel('Password').fill('WrongPassword123!')
     await page.getByRole('button', { name: /^Login$/ }).click()
 
-    await expect(page.getByText(/INVALID_CREDENTIALS|Invalid/i)).toBeVisible()
+    await expect(page.getByText('INVALID_CREDENTIALS')).toBeVisible()
   })
 
   test('logout redirects to login and protected routes stay protected', async ({ page }) => {
