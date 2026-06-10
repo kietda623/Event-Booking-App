@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - main
+      - duygri
   pull_request:
     branches:
       - main
+      - duygri
+  workflow_dispatch:
 
 jobs:
   backend:
