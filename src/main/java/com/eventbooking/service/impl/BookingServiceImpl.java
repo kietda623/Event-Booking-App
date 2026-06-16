@@ -11,6 +11,7 @@ import com.eventbooking.entity.TicketTier;
 import com.eventbooking.entity.User;
 import com.eventbooking.exception.BusinessException;
 import com.eventbooking.exception.ResourceNotFoundException;
+import com.eventbooking.mapper.BookingMapper;
 import com.eventbooking.notification.NotificationService;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.EventRepository;
@@ -20,6 +21,8 @@ import com.eventbooking.repository.TicketRepository;
 import com.eventbooking.repository.UserRepository;
 import com.eventbooking.service.BookingService;
 import com.eventbooking.service.SeatService;
+import com.eventbooking.util.PageResponseMapper;
+import com.eventbooking.util.SeatNumberUtils;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +47,7 @@ public class BookingServiceImpl implements BookingService {
     private final NotificationService notificationService;
     private final TicketTierRepository ticketTierRepository;
     private final SeatService seatService;
+    private final BookingMapper bookingMapper;
 
     @Override
     @Transactional
@@ -67,7 +71,7 @@ public class BookingServiceImpl implements BookingService {
             throw new BusinessException("TIER_SOLD_OUT", "Ticket tier is sold out", HttpStatus.CONFLICT);
         }
 
-        List<String> seatNumbers = normalizeSeatNumbers(request.getSeatNumbers());
+        List<String> seatNumbers = SeatNumberUtils.normalize(request.getSeatNumbers());
         if (!seatNumbers.isEmpty() && seatNumbers.size() != quantity) {
             throw new BusinessException("INVALID_SEATS", "Seat count must match booking quantity", HttpStatus.BAD_REQUEST);
         }
@@ -87,7 +91,7 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus("PENDING");
         booking.setSeatNumbers(String.join(",", seatNumbers));
 
-        return toResponse(bookingRepository.save(booking));
+        return bookingMapper.toResponse(bookingRepository.save(booking));
     }
 
     @Override
@@ -95,8 +99,8 @@ public class BookingServiceImpl implements BookingService {
         Page<BookingResponse> bookings = bookingRepository.findByUserEmailOrderByBookingDateDesc(
                 currentEmail(),
                 PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
-        ).map(this::toResponse);
-        return toPageResponse(bookings);
+        ).map(bookingMapper::toResponse);
+        return PageResponseMapper.from(bookings);
     }
 
     @Override
@@ -112,7 +116,7 @@ public class BookingServiceImpl implements BookingService {
             Booking saved = bookingRepository.save(booking);
             releaseInventory(saved);
             logStatusTransition(saved, oldStatus, saved.getStatus());
-            return toResponse(saved);
+            return bookingMapper.toResponse(saved);
         }
         if ("PAID".equals(booking.getStatus())) {
             String oldStatus = booking.getStatus();
@@ -133,7 +137,7 @@ public class BookingServiceImpl implements BookingService {
             }
             ticketRepository.saveAll(tickets);
             notificationService.sendBookingCancelledEmail(saved);
-            return toResponse(saved);
+            return bookingMapper.toResponse(saved);
         }
         throw new BusinessException("BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled", HttpStatus.CONFLICT);
     }
@@ -150,7 +154,7 @@ public class BookingServiceImpl implements BookingService {
         Booking saved = bookingRepository.save(booking);
         releaseInventory(saved);
         logStatusTransition(saved, oldStatus, saved.getStatus());
-        return toResponse(saved);
+        return bookingMapper.toResponse(saved);
     }
 
     public Booking findOwnedBooking(Long id) {
@@ -171,45 +175,6 @@ public class BookingServiceImpl implements BookingService {
         return SecurityContextHolder.getContext().getAuthentication().getName();
     }
 
-    private BookingResponse toResponse(Booking booking) {
-        return new BookingResponse(
-                booking.getId(),
-                booking.getEvent().getId(),
-                booking.getEvent().getTitle(),
-                booking.getQuantity(),
-                booking.getTotalPrice(),
-                booking.getBookingDate(),
-                booking.getStatus(),
-                refundRepository.findFirstByBookingIdOrderByIdDesc(booking.getId())
-                        .map(Refund::getStatus)
-                        .orElse(null),
-                booking.getTier() == null ? null : booking.getTier().getId(),
-                booking.getTier() == null ? null : booking.getTier().getName(),
-                splitSeatNumbers(booking.getSeatNumbers())
-        );
-    }
-
-    private List<String> normalizeSeatNumbers(List<String> seatNumbers) {
-        if (seatNumbers == null) {
-            return List.of();
-        }
-        return seatNumbers.stream()
-                .filter(seatNumber -> seatNumber != null && !seatNumber.isBlank())
-                .map(String::trim)
-                .distinct()
-                .toList();
-    }
-
-    private List<String> splitSeatNumbers(String seatNumbers) {
-        if (seatNumbers == null || seatNumbers.isBlank()) {
-            return List.of();
-        }
-        return List.of(seatNumbers.split(",")).stream()
-                .filter(seatNumber -> !seatNumber.isBlank())
-                .map(String::trim)
-                .toList();
-    }
-
     private void releaseInventory(Booking booking) {
         if (booking.getTier() != null) {
             TicketTier tier = ticketTierRepository.findByIdForBooking(booking.getTier().getId())
@@ -222,16 +187,6 @@ public class BookingServiceImpl implements BookingService {
             }
         }
         seatService.releaseBookingSeats(booking);
-    }
-
-    private <T> PageResponse<T> toPageResponse(Page<T> page) {
-        return new PageResponse<>(
-                page.getContent(),
-                page.getNumber(),
-                page.getSize(),
-                page.getTotalElements(),
-                page.getTotalPages()
-        );
     }
 
     private void logStatusTransition(Booking booking, String oldStatus, String newStatus) {

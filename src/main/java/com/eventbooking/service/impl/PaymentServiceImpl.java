@@ -7,6 +7,7 @@ import com.eventbooking.entity.Payment;
 import com.eventbooking.entity.Ticket;
 import com.eventbooking.exception.BusinessException;
 import com.eventbooking.exception.ResourceNotFoundException;
+import com.eventbooking.mapper.PaymentMapper;
 import com.eventbooking.notification.NotificationService;
 import com.eventbooking.payment.StripePaymentClient;
 import com.eventbooking.payment.StripePaymentIntentRequest;
@@ -18,6 +19,7 @@ import com.eventbooking.repository.PaymentRepository;
 import com.eventbooking.repository.TicketRepository;
 import com.eventbooking.service.PaymentService;
 import com.eventbooking.service.SeatService;
+import com.eventbooking.util.SeatNumberUtils;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,7 +97,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .filter(payment -> !"FAILED".equals(payment.getStatus()))
                 .filter(payment -> payment.getClientSecret() != null && !payment.getClientSecret().isBlank());
         if (existing.isPresent()) {
-            return toResponse(existing.get(), null);
+            return PaymentMapper.toResponse(existing.get(), null);
         }
 
         long amount = Math.round((booking.getTotalPrice() != null ? booking.getTotalPrice() : 0.0) * 100);
@@ -111,7 +113,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setPaymentIntentId(intent.paymentIntentId());
         payment.setClientSecret(intent.clientSecret());
         payment.setPaymentDate(LocalDateTime.now());
-        return toResponse(paymentRepository.save(payment), null);
+        return PaymentMapper.toResponse(paymentRepository.save(payment), null);
     }
 
     private void handlePaymentIntentSucceeded(StripeWebhookEvent event) {
@@ -165,7 +167,7 @@ public class PaymentServiceImpl implements PaymentService {
             notificationService.sendBookingPaidEmail(booking, savedTicket);
         }
 
-        return toResponse(saved, savedTicket);
+        return PaymentMapper.toResponse(saved, savedTicket);
     }
 
     private Ticket createTicketsIfNeeded(Booking booking) {
@@ -173,7 +175,7 @@ public class PaymentServiceImpl implements PaymentService {
         if (!existingTickets.isEmpty()) {
             return existingTickets.get(0);
         }
-        List<String> seats = splitSeatNumbers(booking.getSeatNumbers());
+        List<String> seats = SeatNumberUtils.split(booking.getSeatNumbers());
         int quantity = booking.getQuantity() != null ? booking.getQuantity() : 1;
         int ticketCount = seats.isEmpty() ? Math.max(quantity, 1) : seats.size();
         List<Ticket> tickets = new ArrayList<>();
@@ -201,7 +203,7 @@ public class PaymentServiceImpl implements PaymentService {
             throw new BusinessException("BOOKING_NOT_OWNED", "Booking is not owned by current user", HttpStatus.FORBIDDEN);
         }
         Ticket ticket = ticketRepository.findFirstByBookingIdOrderByIdDesc(booking.getId()).orElse(null);
-        return toResponse(payment, ticket);
+        return PaymentMapper.toResponse(payment, ticket);
     }
 
     private Booking findOwnedBooking(Long bookingId) {
@@ -211,19 +213,6 @@ public class PaymentServiceImpl implements PaymentService {
             throw new BusinessException("BOOKING_NOT_OWNED", "Booking is not owned by current user", HttpStatus.FORBIDDEN);
         }
         return booking;
-    }
-
-    private PaymentResponse toResponse(Payment payment, Ticket ticket) {
-        return new PaymentResponse(
-                payment.getId(),
-                payment.getBooking().getId(),
-                payment.getAmount(),
-                payment.getStatus(),
-                ticket == null ? null : ticket.getId(),
-                ticket == null ? null : ticket.getTicketCode(),
-                payment.getClientSecret(),
-                payment.getPaymentIntentId()
-        );
     }
 
     private String currentEmail() {
@@ -251,13 +240,4 @@ public class PaymentServiceImpl implements PaymentService {
         return !Arrays.asList(environment.getActiveProfiles()).contains("prod");
     }
 
-    private List<String> splitSeatNumbers(String seatNumbers) {
-        if (seatNumbers == null || seatNumbers.isBlank()) {
-            return List.of();
-        }
-        return Arrays.stream(seatNumbers.split(","))
-                .filter(seatNumber -> !seatNumber.isBlank())
-                .map(String::trim)
-                .toList();
-    }
 }

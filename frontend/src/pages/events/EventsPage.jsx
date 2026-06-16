@@ -1,50 +1,23 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { eventsApi } from '../../api/events'
-import { favoritesApi } from '../../api/favorites'
 import { EmptyState, ErrorState } from '../../components/StateViews'
 import { EventCard } from '../../components/EventCard'
 import { Pagination } from '../../components/Pagination'
 import { EventGridSkeleton } from '../../components/Skeletons'
-import { useAuthStore } from '../../store/authStore'
-
-const filters = [
-  { label: 'All', value: '' },
-  { label: 'Popular', value: 'popular' },
-  { label: 'Upcoming', value: 'upcoming' },
-  { label: 'Nearby', value: 'nearby' },
-]
+import { buildEventTypeParams, eventFilters, getEventType } from './eventFilters'
+import { useBrowserGeolocation } from './useBrowserGeolocation'
+import { useFavoriteEvents } from './useFavoriteEvents'
 
 export function EventsPage() {
-  const queryClient = useQueryClient()
-  const user = useAuthStore((state) => state.user)
   const [searchParams, setSearchParams] = useSearchParams()
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
-  const [coords, setCoords] = useState(null)
-  const [locationStatus, setLocationStatus] = useState('idle')
+  const { coords, locationStatus } = useBrowserGeolocation()
+  const { user, favoriteIds, favoriteMutation } = useFavoriteEvents()
   const typeParam = searchParams.get('type') || ''
-  const type = filters.some((filter) => filter.value === typeParam) ? typeParam : ''
-
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      setLocationStatus('unsupported')
-      return
-    }
-    setLocationStatus('loading')
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setCoords({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        })
-        setLocationStatus('granted')
-      },
-      () => setLocationStatus('denied'),
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
-    )
-  }, [])
+  const type = getEventType(typeParam)
 
   const query = useQuery({
     queryKey: ['events', type, page, coords?.latitude, coords?.longitude],
@@ -66,29 +39,12 @@ export function EventsPage() {
     enabled: Boolean(coords),
     staleTime: 60000,
   })
-  const favoritesQuery = useQuery({
-    queryKey: ['favorites', 'ids'],
-    queryFn: () => favoritesApi.list({ page: 0, size: 100 }),
-    enabled: Boolean(user),
-  })
-  const favoriteMutation = useMutation({
-    mutationFn: ({ eventId, favorited }) => (favorited ? favoritesApi.remove(eventId) : favoritesApi.add(eventId)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['favorites'] })
-      queryClient.invalidateQueries({ queryKey: ['event'] })
-    },
-  })
-
   const filteredEvents = useMemo(() => {
     const events = query.data?.content || []
     const term = search.trim().toLowerCase()
     if (!term) return events
     return events.filter((event) => event.title?.toLowerCase().includes(term))
   }, [query.data?.content, search])
-  const favoriteIds = useMemo(
-    () => new Set((favoritesQuery.data?.content || []).map((event) => event.id)),
-    [favoritesQuery.data],
-  )
 
   return (
     <section className="page-stack">
@@ -105,20 +61,14 @@ export function EventsPage() {
         />
       </div>
       <div className="toolbar">
-        {filters.map((filter) => (
+        {eventFilters.map((filter) => (
           <button
             key={filter.value || 'all'}
             type="button"
             className={`segmented-button ${type === filter.value ? 'active' : ''}`}
             onClick={() => {
               setPage(0)
-              const nextParams = new URLSearchParams(searchParams)
-              if (filter.value) {
-                nextParams.set('type', filter.value)
-              } else {
-                nextParams.delete('type')
-              }
-              setSearchParams(nextParams)
+              setSearchParams(buildEventTypeParams(searchParams, filter.value))
             }}
           >
             {filter.label}

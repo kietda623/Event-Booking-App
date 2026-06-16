@@ -8,6 +8,7 @@ import com.eventbooking.dto.ticket.TicketResponse;
 import com.eventbooking.entity.Ticket;
 import com.eventbooking.repository.TicketRepository;
 import com.eventbooking.service.TicketService;
+import com.eventbooking.util.PageResponseMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -41,7 +42,7 @@ public class TicketController {
                 currentEmail(),
                 PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
         ).map(this::toResponse);
-        return ApiResponse.success("Tickets retrieved successfully", toPageResponse(tickets));
+        return ApiResponse.success("Tickets retrieved successfully", PageResponseMapper.from(tickets));
     }
 
     @PostMapping("/checkin")
@@ -67,16 +68,6 @@ public class TicketController {
                 ticket.getSeatNumber(),
                 ticket.getCheckedIn(),
                 ticket.getCheckedInAt()
-        );
-    }
-
-    private <T> PageResponse<T> toPageResponse(Page<T> page) {
-        return new PageResponse<>(
-                page.getContent(),
-                page.getNumber(),
-                page.getSize(),
-                page.getTotalElements(),
-                page.getTotalPages()
         );
     }
 

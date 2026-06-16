@@ -13,6 +13,7 @@ import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.FavoriteRepository;
 import com.eventbooking.repository.UserRepository;
 import com.eventbooking.service.FavoriteService;
+import com.eventbooking.util.PageResponseMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -89,7 +90,7 @@ public class FavoriteServiceImpl implements FavoriteService {
                 currentEmail(),
                 PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
         ).map(favorite -> toEventResponse(favorite.getEvent()));
-        return toPageResponse(favorites);
+        return PageResponseMapper.from(favorites);
     }
 
     private User currentUser() {
@@ -131,13 +132,4 @@ public class FavoriteServiceImpl implements FavoriteService {
         );
     }
 
-    private <T> PageResponse<T> toPageResponse(Page<T> page) {
-        return new PageResponse<>(
-                page.getContent(),
-                page.getNumber(),
-                page.getSize(),
-                page.getTotalElements(),
-                page.getTotalPages()
-        );
-    }
 }
