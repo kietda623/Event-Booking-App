@@ -16,4 +16,8 @@ public class TicketResponse {
     private String location;
     private Integer quantity;
     private String status;
+    private String ticketType;
+    private String seatNumber;
+    private Boolean checkedIn;
+    private LocalDateTime checkedInAt;
 }

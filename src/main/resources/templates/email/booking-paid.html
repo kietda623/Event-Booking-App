@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<body>
+<h1>Booking confirmed</h1>
+<p>Your booking for <strong th:text="${eventName}">Event</strong> is confirmed.</p>
+<ul>
+    <li>Date: <span th:text="${eventDate}">date</span></li>
+    <li>Location: <span th:text="${location}">location</span></li>
+    <li>Quantity: <span th:text="${quantity}">1</span></li>
+    <li>Ticket code: <span th:text="${ticketCode}">ticket</span></li>
+</ul>
+</body>
+</html>

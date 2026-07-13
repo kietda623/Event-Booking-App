@@ -23,6 +23,11 @@ public class Payment {
 
     private String status; // Sucess, Failed
 
+    private String paymentIntentId;
+
+    @Column(length = 1000)
+    private String clientSecret;
+
     private LocalDateTime paymentDate;
 
     @OneToOne

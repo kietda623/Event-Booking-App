@@ -1,0 +1,62 @@
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: eventbooking
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-staging}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRY_MINUTES: ${JWT_EXPIRY_MINUTES}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      MAIL_FROM: ${MAIL_FROM}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      APP_ADMIN_SEED: ${APP_ADMIN_SEED}
+      APP_E2E_SEED: ${APP_E2E_SEED:-false}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin.e2e@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin123!}
+      TEST_USER_EMAIL: ${TEST_USER_EMAIL:-user.e2e@example.com}
+      TEST_USER_PASSWORD: ${TEST_USER_PASSWORD:-User123!}
+      E2E_CHECKIN_TICKET_CODE: ${E2E_CHECKIN_TICKET_CODE:-E2E-CHECKIN-0001}
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
+        VITE_ENABLE_MOCK_PAYMENT: ${VITE_ENABLE_MOCK_PAYMENT:-false}
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  mysql_data:

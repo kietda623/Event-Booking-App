@@ -10,4 +10,8 @@ public class PaymentResponse {
     private Long bookingId;
     private Double amount;
     private String status;
+    private Long ticketId;
+    private String ticketCode;
+    private String clientSecret;
+    private String paymentIntentId;
 }

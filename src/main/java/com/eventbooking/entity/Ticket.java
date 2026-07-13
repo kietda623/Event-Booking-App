@@ -5,8 +5,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
-@Table(name = "tickets")
+@Table(
+        name = "tickets",
+        indexes = @Index(name = "idx_tickets_user", columnList = "user_id")
+)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -17,7 +22,35 @@ public class Ticket {
 
     private String ticketCode;
 
+    private String ticketType;
+
+    private String seatNumber;
+
+    private String status;
+
+    private Boolean checkedIn;
+
+    private LocalDateTime checkedInAt;
+
     @ManyToOne
     @JoinColumn(name = "booking_id")
     private Booking booking;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    @ManyToOne
+    @JoinColumn(name = "tier_id")
+    private TicketTier tier;
+
+    @PrePersist
+    void prePersist() {
+        if (status == null) {
+            status = "ACTIVE";
+        }
+        if (checkedIn == null) {
+            checkedIn = false;
+        }
+    }
 }

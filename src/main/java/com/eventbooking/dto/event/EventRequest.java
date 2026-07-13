@@ -21,4 +21,10 @@ public class EventRequest {
     private Double price;
 
     private Integer totalTickets;
+
+    private String imageUrl;
+
+    private Double latitude;
+
+    private Double longitude;
 }

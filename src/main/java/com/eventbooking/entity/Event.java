@@ -8,7 +8,10 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "events")
+@Table(
+        name = "events",
+        indexes = @Index(name = "idx_events_start_time", columnList = "event_date")
+)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -24,9 +27,35 @@ public class Event {
 
     private String location;
 
+    @Column(name = "event_date")
     private LocalDateTime eventDate;
 
     private Integer totalTickets;
 
     private Double ticketPrice;
+
+    private String imageUrl;
+
+    private Double latitude;
+
+    private Double longitude;
+
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
+
+    @Version
+    private Long version;
+
+    @PrePersist
+    void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
