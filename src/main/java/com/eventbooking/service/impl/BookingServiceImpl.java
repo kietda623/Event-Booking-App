@@ -31,7 +31,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -50,7 +49,6 @@ public class BookingServiceImpl implements BookingService {
     private final BookingMapper bookingMapper;
 
     @Override
-    @Transactional
     public BookingResponse book(BookingRequest request) {
         int quantity = request.getQuantity() != null ? request.getQuantity() : 1;
         if (quantity < 1) {
@@ -104,7 +102,6 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    @Transactional
     public BookingResponse cancel(Long id) {
         Booking booking = findOwnedBooking(id);
         if ("CANCELLED".equals(booking.getStatus()) || "COMPLETED".equals(booking.getStatus())) {
